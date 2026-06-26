@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frase del día</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    font-family: Georgia, 'Times New Roman', serif;
+    padding: 2rem;
+  }
+  .container {
+    text-align: center;
+    max-width: 480px;
+  }
+  .frase {
+    font-size: 1.35rem;
+    line-height: 1.6;
+    color: #2d2d2d;
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+  .autor {
+    font-size: 0.85rem;
+    color: #888;
+    letter-spacing: 0.05em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-style: normal;
+  }
+  .fecha {
+    font-size: 0.75rem;
+    color: #bbb;
+    margin-top: 1.2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    text-transform: capitalize;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <p class="frase" id="frase"></p>
+  <p class="autor" id="autor"></p>
+  <p class="fecha" id="fecha"></p>
+</div>
+<script>
+const frases = [
+  ["No tienes que ser perfecta para comenzar, pero tienes que comenzar para ser perfecta.", "— Karen Lamb"],
+  ["El éxito no es la clave de la felicidad. La felicidad es la clave del éxito.", "— Albert Schweitzer"],
+  ["Haz lo que puedas, con lo que tienes, donde estás.", "— Theodore Roosevelt"],
+  ["La única forma de hacer un gran trabajo es amar lo que haces.", "— Steve Jobs"],
+  ["No esperes el momento perfecto. Toma el momento y hazlo perfecto.", "— Zoey Sayward"],
+  ["Cada día es una nueva oportunidad para cambiar tu vida.", "— Anónimo"],
+  ["El coraje no es la ausencia de miedo, sino el juicio de que algo es más importante que el miedo.", "— Ambrose Redmoon"],
+  ["Muévete como si todo fuera a salir bien. Porque así será.", "— Anónimo"],
+  ["La disciplina es el puente entre las metas y los logros.", "— Jim Rohn"],
+  ["Empieza donde estás. Usa lo que tienes. Haz lo que puedas.", "— Arthur Ashe"],
+  ["El futuro pertenece a quienes creen en la belleza de sus sueños.", "— Eleanor Roosevelt"],
+  ["Una pequeña acción hoy vale más que mil planes perfectos para mañana.", "— Anónimo"],
+  ["No cuentes los días, haz que los días cuenten.", "— Muhammad Ali"],
+  ["El único límite es el que tú misma te pones.", "— Anónimo"],
+  ["Transforma el obstáculo en oportunidad.", "— Marco Aurelio"],
+  ["Lo que no te desafía, no te cambia.", "— Fred DeVito"],
+  ["Sé el cambio que quieres ver en el mundo.", "— Mahatma Gandhi"],
+  ["Si puedes soñarlo, puedes hacerlo.", "— Walt Disney"],
+  ["No hay atajos para ningún lugar que valga la pena ir.", "— Beverly Sills"],
+  ["El secreto de salir adelante es comenzar.", "— Mark Twain"],
+  ["La perseverancia es el trabajo duro que haces después de cansarte del trabajo duro.", "— Newt Gingrich"],
+  ["Cae siete veces, levántate ocho.", "— Proverbio japonés"],
+  ["Lo que siembras en esfuerzo, lo cosechas en resultados.", "— Anónimo"],
+  ["El progreso, no la perfección.", "— Kathy Freston"],
+  ["Tus limitaciones solo existen en tu mente.", "— Anónimo"],
+  ["Actúa como si lo que haces marcara la diferencia. Lo marca.", "— William James"],
+  ["La vida no se trata de encontrarte a ti misma, sino de crearte.", "— George Bernard Shaw"],
+  ["Creer en ti misma es el primer secreto del éxito.", "— Ralph Waldo Emerson"],
+  ["Un día a la vez. Un paso a la vez.", "— Anónimo"],
+  ["Las grandes cosas nunca vienen de las zonas de confort.", "— Neil Strauss"],
+  ["La energía y la persistencia conquistan todas las cosas.", "— Benjamin Franklin"],
+  ["Hazlo con pasión o no lo hagas.", "— Rosa Nouchette Carey"],
+  ["El aprendizaje nunca agota la mente.", "— Leonardo da Vinci"],
+  ["No pienses en cuánto falta. Piensa en cuánto has avanzado.", "— Anónimo"],
+  ["El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "— Robert Collier"],
+  ["Confía en el proceso.", "— Anónimo"],
+  ["La constancia es la virtud por la que todas las otras virtudes dan fruto.", "— Evelyn Underhill"],
+];
+
+const hoy = new Date();
+const idx = (hoy.getFullYear() * 365 + hoy.getMonth() * 31 + hoy.getDate()) % frases.length;
+const [texto, autor] = frases[idx];
+
+document.getElementById("frase").textContent = "\u201C" + texto + "\u201D";
+document.getElementById("autor").textContent = autor;
+
+const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+document.getElementById("fecha").textContent = dias[hoy.getDay()] + " " + hoy.getDate() + " de " + meses[hoy.getMonth()];
+</script>
+</body>
+</html>
