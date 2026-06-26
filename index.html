@@ -11,87 +11,109 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
     font-family: Georgia, 'Times New Roman', serif;
     padding: 2rem;
   }
   .container {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
     text-align: center;
-    max-width: 480px;
+    padding: 2.5rem 2rem;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  svg.tapiz {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .texto {
+    position: relative;
+    z-index: 2;
   }
   .frase {
-    font-size: 1.35rem;
-    line-height: 1.6;
-    color: #2d2d2d;
+    font-size: 1.25rem;
+    line-height: 1.7;
     margin-bottom: 1rem;
     font-style: italic;
   }
   .autor {
-    font-size: 0.85rem;
-    color: #888;
-    letter-spacing: 0.05em;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
+    opacity: 0.6;
   }
   .fecha {
-    font-size: 0.75rem;
-    color: #bbb;
-    margin-top: 1.2rem;
+    font-size: 0.72rem;
+    margin-top: 1rem;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-transform: capitalize;
+    opacity: 0.4;
   }
 </style>
 </head>
 <body>
-<div class="container">
-  <p class="frase" id="frase"></p>
-  <p class="autor" id="autor"></p>
-  <p class="fecha" id="fecha"></p>
+<div class="container" id="container">
+  <svg class="tapiz" viewBox="0 0 520 340" xmlns="http://www.w3.org/2000/svg" id="tapiz"></svg>
+  <div class="texto">
+    <p class="frase" id="frase"></p>
+    <p class="autor" id="autor"></p>
+    <p class="fecha" id="fecha"></p>
+  </div>
 </div>
 <script>
 const frases = [
-  ["No tienes que ser perfecta para comenzar, pero tienes que comenzar para ser perfecta.", "— Karen Lamb"],
-  ["El éxito no es la clave de la felicidad. La felicidad es la clave del éxito.", "— Albert Schweitzer"],
-  ["Haz lo que puedas, con lo que tienes, donde estás.", "— Theodore Roosevelt"],
-  ["La única forma de hacer un gran trabajo es amar lo que haces.", "— Steve Jobs"],
-  ["No esperes el momento perfecto. Toma el momento y hazlo perfecto.", "— Zoey Sayward"],
-  ["Cada día es una nueva oportunidad para cambiar tu vida.", "— Anónimo"],
-  ["El coraje no es la ausencia de miedo, sino el juicio de que algo es más importante que el miedo.", "— Ambrose Redmoon"],
-  ["Muévete como si todo fuera a salir bien. Porque así será.", "— Anónimo"],
-  ["La disciplina es el puente entre las metas y los logros.", "— Jim Rohn"],
-  ["Empieza donde estás. Usa lo que tienes. Haz lo que puedas.", "— Arthur Ashe"],
-  ["El futuro pertenece a quienes creen en la belleza de sus sueños.", "— Eleanor Roosevelt"],
-  ["Una pequeña acción hoy vale más que mil planes perfectos para mañana.", "— Anónimo"],
-  ["No cuentes los días, haz que los días cuenten.", "— Muhammad Ali"],
-  ["El único límite es el que tú misma te pones.", "— Anónimo"],
-  ["Transforma el obstáculo en oportunidad.", "— Marco Aurelio"],
-  ["Lo que no te desafía, no te cambia.", "— Fred DeVito"],
-  ["Sé el cambio que quieres ver en el mundo.", "— Mahatma Gandhi"],
-  ["Si puedes soñarlo, puedes hacerlo.", "— Walt Disney"],
-  ["No hay atajos para ningún lugar que valga la pena ir.", "— Beverly Sills"],
-  ["El secreto de salir adelante es comenzar.", "— Mark Twain"],
-  ["La perseverancia es el trabajo duro que haces después de cansarte del trabajo duro.", "— Newt Gingrich"],
-  ["Cae siete veces, levántate ocho.", "— Proverbio japonés"],
-  ["Lo que siembras en esfuerzo, lo cosechas en resultados.", "— Anónimo"],
-  ["El progreso, no la perfección.", "— Kathy Freston"],
-  ["Tus limitaciones solo existen en tu mente.", "— Anónimo"],
-  ["Actúa como si lo que haces marcara la diferencia. Lo marca.", "— William James"],
-  ["La vida no se trata de encontrarte a ti misma, sino de crearte.", "— George Bernard Shaw"],
-  ["Creer en ti misma es el primer secreto del éxito.", "— Ralph Waldo Emerson"],
-  ["Un día a la vez. Un paso a la vez.", "— Anónimo"],
-  ["Las grandes cosas nunca vienen de las zonas de confort.", "— Neil Strauss"],
-  ["La energía y la persistencia conquistan todas las cosas.", "— Benjamin Franklin"],
-  ["Hazlo con pasión o no lo hagas.", "— Rosa Nouchette Carey"],
-  ["El aprendizaje nunca agota la mente.", "— Leonardo da Vinci"],
-  ["No pienses en cuánto falta. Piensa en cuánto has avanzado.", "— Anónimo"],
-  ["El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "— Robert Collier"],
-  ["Confía en el proceso.", "— Anónimo"],
-  ["La constancia es la virtud por la que todas las otras virtudes dan fruto.", "— Evelyn Underhill"],
+  ["No tienes que ser perfecta para comenzar, pero tienes que comenzar para ser perfecta.", "— Karen Lamb", "#f5e6f0", "#5c3a52"],
+  ["El éxito no es la clave de la felicidad. La felicidad es la clave del éxito.", "— Albert Schweitzer", "#fef3e2", "#6b4a1e"],
+  ["Haz lo que puedas, con lo que tienes, donde estás.", "— Theodore Roosevelt", "#e8f5e9", "#2e5c35"],
+  ["La única forma de hacer un gran trabajo es amar lo que haces.", "— Steve Jobs", "#fff0e6", "#7a3d1a"],
+  ["No esperes el momento perfecto. Toma el momento y hazlo perfecto.", "— Zoey Sayward", "#f0e8fc", "#4a2d7a"],
+  ["Cada día es una nueva oportunidad para cambiar tu vida.", "— Anónimo", "#e6f4fb", "#1a4a6b"],
+  ["El coraje no es la ausencia de miedo, sino el juicio de que algo es más importante que el miedo.", "— Ambrose Redmoon", "#fde8e8", "#7a2020"],
+  ["Muévete como si todo fuera a salir bien. Porque así será.", "— Anónimo", "#e8fdf5", "#1a5c45"],
+  ["La disciplina es el puente entre las metas y los logros.", "— Jim Rohn", "#fdf5e8", "#6b4a0a"],
+  ["Empieza donde estás. Usa lo que tienes. Haz lo que puedas.", "— Arthur Ashe", "#e8ecfd", "#2a3070"],
+  ["El futuro pertenece a quienes creen en la belleza de sus sueños.", "— Eleanor Roosevelt", "#fde8f5", "#7a2060"],
+  ["Una pequeña acción hoy vale más que mil planes perfectos para mañana.", "— Anónimo", "#edfde8", "#2a5c1a"],
+  ["No cuentes los días, haz que los días cuenten.", "— Muhammad Ali", "#fdf0e8", "#7a4010"],
+  ["El único límite es el que tú misma te pones.", "— Anónimo", "#e8f0fd", "#1a2a7a"],
+  ["Transforma el obstáculo en oportunidad.", "— Marco Aurelio", "#fde8ec", "#7a1a30"],
+  ["Lo que no te desafía, no te cambia.", "— Fred DeVito", "#e8fdf8", "#1a5c50"],
+  ["Sé el cambio que quieres ver en el mundo.", "— Mahatma Gandhi", "#f5fde8", "#3a5c10"],
+  ["Si puedes soñarlo, puedes hacerlo.", "— Walt Disney", "#f0f0fd", "#2a2a7a"],
+  ["No hay atajos para ningún lugar que valga la pena ir.", "— Beverly Sills", "#fde8f0", "#7a1a4a"],
+  ["El secreto de salir adelante es comenzar.", "— Mark Twain", "#e8fde8", "#1a5c1a"],
+  ["La perseverancia es el trabajo duro que haces después de cansarte del trabajo duro.", "— Newt Gingrich", "#fdf8e8", "#5c4a0a"],
+  ["Cae siete veces, levántate ocho.", "— Proverbio japonés", "#fde8e8", "#6b1a1a"],
+  ["Lo que siembras en esfuerzo, lo cosechas en resultados.", "— Anónimo", "#eef5e8", "#2a4a1a"],
+  ["El progreso, no la perfección.", "— Kathy Freston", "#e8f5fd", "#1a3a6b"],
+  ["Tus limitaciones solo existen en tu mente.", "— Anónimo", "#f5e8fd", "#4a1a7a"],
+  ["Actúa como si lo que haces marcara la diferencia. Lo marca.", "— William James", "#fdf0e8", "#6b3a10"],
+  ["La vida no se trata de encontrarte a ti misma, sino de crearte.", "— George Bernard Shaw", "#fde8f8", "#6b1a5a"],
+  ["Creer en ti misma es el primer secreto del éxito.", "— Ralph Waldo Emerson", "#e8fdfc", "#1a5a58"],
+  ["Un día a la vez. Un paso a la vez.", "— Anónimo", "#f8fde8", "#4a5a1a"],
+  ["Las grandes cosas nunca vienen de las zonas de confort.", "— Neil Strauss", "#fde8ea", "#7a1a20"],
+  ["La energía y la persistencia conquistan todas las cosas.", "— Benjamin Franklin", "#e8f8fd", "#1a4a6a"],
+  ["Hazlo con pasión o no lo hagas.", "— Rosa Nouchette Carey", "#fde8f2", "#7a1a50"],
+  ["El aprendizaje nunca agota la mente.", "— Leonardo da Vinci", "#eafde8", "#1a5c20"],
+  ["No pienses en cuánto falta. Piensa en cuánto has avanzado.", "— Anónimo", "#fdf4e8", "#6b4a10"],
+  ["El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "— Robert Collier", "#e8eafd", "#2a1a7a"],
+  ["Confía en el proceso.", "— Anónimo", "#f0fde8", "#3a5c10"],
+  ["La constancia es la virtud por la que todas las otras virtudes dan fruto.", "— Evelyn Underhill", "#fde8fd", "#5a1a7a"],
 ];
 
 const hoy = new Date();
 const idx = (hoy.getFullYear() * 365 + hoy.getMonth() * 31 + hoy.getDate()) % frases.length;
-const [texto, autor] = frases[idx];
+const [texto, autor, bgColor, textColor] = frases[idx];
+
+document.body.style.background = bgColor;
+document.getElementById("container").style.background = bgColor;
+document.getElementById("frase").style.color = textColor;
+document.getElementById("autor").style.color = textColor;
+document.getElementById("fecha").style.color = textColor;
 
 document.getElementById("frase").textContent = "\u201C" + texto + "\u201D";
 document.getElementById("autor").textContent = autor;
@@ -99,6 +121,58 @@ document.getElementById("autor").textContent = autor;
 const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 document.getElementById("fecha").textContent = dias[hoy.getDay()] + " " + hoy.getDate() + " de " + meses[hoy.getMonth()];
+
+function flor(x, y, r, stroke, petals) {
+  let svg = '';
+  const np = petals || 8;
+  for (let i = 0; i < np; i++) {
+    const angle = (i / np) * Math.PI * 2;
+    const px = x + Math.cos(angle) * r * 1.8;
+    const py = y + Math.sin(angle) * r * 1.8;
+    svg += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${(r*0.9).toFixed(1)}" ry="${(r*0.45).toFixed(1)}" transform="rotate(${(angle*180/Math.PI).toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)})" stroke="${stroke}" stroke-width="0.7" fill="none"/>`;
+  }
+  svg += `<circle cx="${x}" cy="${y}" r="${(r*0.6).toFixed(1)}" stroke="${stroke}" stroke-width="0.7" fill="none"/>`;
+  return svg;
+}
+
+function ramita(x, y, stroke) {
+  const x2 = x + (Math.random() > 0.5 ? 18 : -18);
+  return `
+    <line x1="${x}" y1="${y}" x2="${x2}" y2="${y-40}" stroke="${stroke}" stroke-width="0.6"/>
+    <ellipse cx="${x-8}" cy="${y-18}" rx="9" ry="4" transform="rotate(-35 ${x-8} ${y-18})" stroke="${stroke}" stroke-width="0.6" fill="none"/>
+    <ellipse cx="${x+8}" cy="${y-28}" rx="9" ry="4" transform="rotate(25 ${x+8} ${y-28})" stroke="${stroke}" stroke-width="0.6" fill="none"/>
+    <ellipse cx="${x2-6}" cy="${y-38}" rx="7" ry="3" transform="rotate(-20 ${x2-6} ${y-38})" stroke="${stroke}" stroke-width="0.6" fill="none"/>
+  `;
+}
+
+function capullo(x, y, stroke) {
+  return `
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y-25}" stroke="${stroke}" stroke-width="0.6"/>
+    <ellipse cx="${x}" cy="${y-30}" rx="5" ry="8" stroke="${stroke}" stroke-width="0.7" fill="none"/>
+    <path d="M${x-5},${y-28} Q${x},${y-38} ${x+5},${y-28}" stroke="${stroke}" stroke-width="0.6" fill="none"/>
+  `;
+}
+
+const s = textColor + "55";
+let svgContent = '';
+svgContent += flor(30, 30, 10, textColor + "66", 6);
+svgContent += flor(490, 20, 12, textColor + "55", 8);
+svgContent += flor(500, 300, 9, textColor + "66", 6);
+svgContent += flor(20, 290, 11, textColor + "55", 8);
+svgContent += flor(260, 15, 8, textColor + "44", 6);
+svgContent += flor(260, 325, 8, textColor + "44", 6);
+svgContent += ramita(60, 340, textColor + "55");
+svgContent += ramita(460, 340, textColor + "44");
+svgContent += ramita(30, 160, textColor + "44");
+svgContent += ramita(490, 160, textColor + "44");
+svgContent += capullo(130, 340, textColor + "50");
+svgContent += capullo(390, 340, textColor + "50");
+svgContent += capullo(15, 100, textColor + "44");
+svgContent += capullo(505, 100, textColor + "44");
+svgContent += `<line x1="80" y1="0" x2="80" y2="340" stroke="${textColor}18" stroke-width="0.5" stroke-dasharray="3,8"/>`;
+svgContent += `<line x1="440" y1="0" x2="440" y2="340" stroke="${textColor}18" stroke-width="0.5" stroke-dasharray="3,8"/>`;
+
+document.getElementById("tapiz").innerHTML = svgContent;
 </script>
 </body>
 </html>
