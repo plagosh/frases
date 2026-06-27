@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lista de deseos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #191919; padding: 1.2rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+  .header { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
+  .titulo { color: #e8e8e8; font-size: 1rem; font-weight: 500; }
+  .toolbar { display: flex; gap: 6px; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .inp { flex: 1; min-width: 100px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 10px; padding: 0.5rem 0.8rem; color: #e8e8e8; font-size: 0.82rem; font-family: inherit; height: 36px; outline: none; }
+  .inp:focus { border-color: #555; }
+  .inp-precio { width: 80px; flex: none; }
+  .sel { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 10px; padding: 0.5rem 0.5rem; color: #e8e8e8; font-size: 0.78rem; height: 36px; outline: none; }
+  .btn { background: #3a3a3a; border: none; border-radius: 10px; color: #e8e8e8; font-size: 1.2rem; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+  .btn:hover { background: #4a4a4a; }
+  .cats { display: flex; gap: 5px; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .cat-btn { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 20px; color: #888; font-size: 0.72rem; padding: 3px 10px; cursor: pointer; transition: all 0.15s; }
+  .cat-btn.active { background: #4a4a4a; color: #e8e8e8; border-color: #666; }
+  .lista { display: flex; flex-direction: column; gap: 7px; }
+  .item { display: flex; align-items: center; gap: 8px; background: #242424; border-radius: 10px; padding: 0.65rem 0.9rem; border-left: 3px solid transparent; transition: opacity 0.2s; }
+  .item.comprado { opacity: 0.4; }
+  .item.comprado .item-nombre { text-decoration: line-through; }
+  .check { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid #555; background: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; transition: all 0.2s; }
+  .check.done { background: #4caf82; border-color: #4caf82; }
+  .item-info { flex: 1; min-width: 0; }
+  .item-nombre { font-size: 0.83rem; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .badge { font-size: 0.65rem; padding: 1px 7px; border-radius: 20px; font-weight: 500; }
+  .badge-Tecnologia { background: #1a3a5c; color: #7ab8f5; }
+  .badge-Ropa { background: #3a1a3a; color: #d4a0d4; }
+  .badge-Hogar { background: #1a3a2a; color: #7ad4a0; }
+  .badge-Belleza { background: #3a1a28; color: #f4a0c0; }
+  .badge-Otro { background: #3a3020; color: #d4c080; }
+  .item-precio { font-size: 0.78rem; color: #999; font-weight: 500; flex-shrink: 0; }
+  .btn-del { background: none; border: none; color: #444; font-size: 1rem; cursor: pointer; padding: 0 2px; flex-shrink: 0; transition: color 0.2s; }
+  .btn-del:hover { color: #888; }
+  .resumen { display: flex; gap: 8px; margin-top: 1rem; }
+  .stat { flex: 1; background: #242424; border-radius: 10px; padding: 0.55rem; text-align: center; }
+  .stat-num { font-size: 1.1rem; font-weight: 600; color: #e8e8e8; }
+  .stat-label { font-size: 0.62rem; color: #555; margin-top: 1px; }
+  .empty { text-align: center; color: #444; font-size: 0.82rem; padding: 1.5rem 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <span style="font-size:1.2rem">🛍️</span>
+  <span class="titulo">Lista de deseos</span>
+</div>
+<div class="toolbar">
+  <input class="inp" id="inpNombre" placeholder="Qué quieres comprar..."/>
+  <input class="inp inp-precio" id="inpPrecio" placeholder="$ precio"/>
+  <select class="sel" id="selCat">
+    <option>Tecnologia</option>
+    <option>Ropa</option>
+    <option>Hogar</option>
+    <option>Belleza</option>
+    <option>Otro</option>
+  </select>
+  <button class="btn" id="btnAdd">+</button>
+</div>
+<div class="cats" id="cats">
+  <div class="cat-btn active" data-cat="Todos">Todos</div>
+  <div class="cat-btn" data-cat="Tecnologia">Tecnología</div>
+  <div class="cat-btn" data-cat="Ropa">Ropa</div>
+  <div class="cat-btn" data-cat="Hogar">Hogar</div>
+  <div class="cat-btn" data-cat="Belleza">Belleza</div>
+  <div class="cat-btn" data-cat="Otro">Otro</div>
+</div>
+<div class="lista" id="lista"></div>
+<div class="resumen" id="resumen"></div>
+
+<script>
+let items = [];
+let filtro = 'Todos';
+
+try { const s = localStorage.getItem('lista_deseos'); if(s) items = JSON.parse(s); } catch(e){}
+
+function guardar() { try { localStorage.setItem('lista_deseos', JSON.stringify(items)); } catch(e){} }
+
+function render() {
+  const lista = document.getElementById('lista');
+  const resumen = document.getElementById('resumen');
+  const filtrados = filtro === 'Todos' ? items : items.filter(i => i.cat === filtro);
+
+  if (filtrados.length === 0) {
+    lista.innerHTML = '<div class="empty">Sin items todavía</div>';
+  } else {
+    lista.innerHTML = filtrados.map((item, fi) => {
+      const i = items.indexOf(item);
+      return `<div class="item${item.comprado ? ' comprado' : ''}" style="border-left-color:${item.comprado?'#4caf82':'#666'}">
+        <div class="check${item.comprado?' done':''}" onclick="toggle(${i})">${item.comprado?'✓':''}</div>
+        <div class="item-info">
+          <div class="item-nombre" title="${item.nombre}">${item.nombre}</div>
+          <div class="item-meta"><span class="badge badge-${item.cat}">${item.cat}</span></div>
+        </div>
+        ${item.precio ? `<span class="item-precio">$${Number(item.precio).toLocaleString('es-CL')}</span>` : ''}
+        <button class="btn-del" onclick="eliminar(${i})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  const total = items.filter(i=>!i.comprado && i.precio).reduce((a,i)=>a+Number(i.precio),0);
+  const comprados = items.filter(i=>i.comprado).length;
+  resumen.innerHTML = `
+    <div class="stat"><div class="stat-num">${items.length}</div><div class="stat-label">items</div></div>
+    <div class="stat"><div class="stat-num">${comprados}</div><div class="stat-label">comprados</div></div>
+    <div class="stat"><div class="stat-num">${total>0?'$'+Math.round(total/1000)+'k':'—'}</div><div class="stat-label">pendiente</div></div>
+  `;
+}
+
+function toggle(i) { items[i].comprado = !items[i].comprado; guardar(); render(); }
+function eliminar(i) { items.splice(i,1); guardar(); render(); }
+
+document.getElementById('btnAdd').addEventListener('click', () => {
+  const nombre = document.getElementById('inpNombre').value.trim();
+  if (!nombre) return;
+  items.unshift({ nombre, precio: document.getElementById('inpPrecio').value.replace(/[^0-9]/g,''), cat: document.getElementById('selCat').value, comprado: false });
+  guardar(); render();
+  document.getElementById('inpNombre').value = '';
+  document.getElementById('inpPrecio').value = '';
+});
+
+document.getElementById('inpNombre').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnAdd').click(); });
+
+document.getElementById('cats').addEventListener('click', e => {
+  const btn = e.target.closest('.cat-btn');
+  if (!btn) return;
+  filtro = btn.dataset.cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === filtro));
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
