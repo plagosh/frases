@@ -6,9 +6,9 @@
 <title>Biblioteca Personal</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1rem; background:transparent; min-height:100vh; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1rem; background:#191919; min-height:100vh; }
 .filtros { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1.2rem; }
-.filtro { border:none; border-radius:20px; padding:5px 14px; font-size:0.75rem; font-weight:500; cursor:pointer; transition:all 0.2s; font-family:inherit; background:#f0f0f0; color:#888; }
+.filtro { border:none; border-radius:20px; padding:5px 14px; font-size:0.75rem; font-weight:500; cursor:pointer; transition:all 0.2s; font-family:inherit; background:#2a2a2a; color:#888; }
 .filtro.activo.f-todos    { background:#f0e8f8; color:#7a4a8a; }
 .filtro.activo.f-libro    { background:#e8f0fd; color:#2a5aa0; }
 .filtro.activo.f-pelicula { background:#fde8e8; color:#a03030; }
@@ -17,12 +17,12 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; paddi
 .filtro.activo.f-pendiente{ background:#fdf8e0; color:#7a6a10; }
 .filtro.activo.f-terminado{ background:#e8f8e8; color:#2a6a2a; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(125px,1fr)); gap:12px; }
-.card { border-radius:16px; overflow:hidden; background:#fff; border:0.5px solid #eee; transition:transform 0.2s, box-shadow 0.2s; cursor:pointer; position:relative; }
+.card { border-radius:16px; overflow:hidden; background:#2a2a2a; border:0.5px solid var(--border, #eee); transition:transform 0.2s, box-shadow 0.2s; cursor:pointer; position:relative; }
 .card:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,0.10); }
 .poster { width:100%; aspect-ratio:2/3; object-fit:cover; display:block; }
-.poster-placeholder { width:100%; aspect-ratio:2/3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; color:#aaa; }
+.poster-placeholder { width:100%; aspect-ratio:2/3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; color:#666; }
 .card-info { padding:8px 10px 10px; }
-.card-titulo { font-size:0.75rem; font-weight:500; color:#333; line-height:1.3; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-titulo { font-size:0.75rem; font-weight:500; color:#e0e0e0; line-height:1.3; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .card-meta { display:flex; justify-content:space-between; align-items:center; }
 .badge { font-size:0.62rem; font-weight:600; padding:2px 7px; border-radius:10px; }
 .b-pelicula { background:#fde8e8; color:#a03030; }
@@ -34,23 +34,23 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; paddi
 .d-pendiente { background:#f0c840; }
 .d-en-curso  { background:#60a8f0; }
 .d-terminado { background:#50c878; }
-.card-add { border-radius:16px; aspect-ratio:2/3; border:1.5px dashed #ddd; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; color:#bbb; font-size:0.72rem; cursor:pointer; background:transparent; transition:all 0.2s; font-family:inherit; }
-.card-add:hover { border-color:#bbb; color:#999; }
+.card-add { border-radius:16px; aspect-ratio:2/3; border:1.5px dashed #3a3a3a; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; color:#bbb; font-size:0.72rem; cursor:pointer; background:transparent; transition:all 0.2s; font-family:inherit; }
+.card-add:hover { border-color:#666; color:#aaa; }
 .leyenda { display:flex; gap:12px; margin-top:1rem; flex-wrap:wrap; }
-.leyenda-item { display:flex; align-items:center; gap:4px; font-size:0.65rem; color:#aaa; }
+.leyenda-item { display:flex; align-items:center; gap:4px; font-size:0.65rem; color:#666; }
 .leyenda-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
 .modal-bg.open { display:flex; }
-.modal { background:#fff; border-radius:20px; padding:1.5rem; width:90%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,0.15); }
-.modal h3 { font-size:0.9rem; font-weight:600; color:#333; margin-bottom:1rem; }
+.modal { background:#2a2a2a; border-radius:20px; padding:1.5rem; width:90%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,0.15); }
+.modal h3 { font-size:0.9rem; font-weight:600; color:#e0e0e0; margin-bottom:1rem; }
 .modal-campos { display:flex; flex-direction:column; gap:8px; margin-bottom:1rem; }
-.inp { width:100%; background:#f8f8f8; border:1px solid #eee; border-radius:10px; padding:8px 12px; font-size:0.82rem; font-family:inherit; color:#333; outline:none; }
-.inp:focus { border-color:#c0a0d0; }
+.inp { width:100%; background:#333; border:1px solid #444; border-radius:10px; padding:8px 12px; font-size:0.82rem; font-family:inherit; color:#e0e0e0; outline:none; }
+.inp:focus { border-color:#a080c0; }
 .sel { appearance:none; cursor:pointer; }
 .modal-btns { display:flex; gap:8px; }
 .btn-guardar { flex:1; background:#c0a0d0; border:none; border-radius:10px; color:#fff; font-size:0.85rem; font-weight:600; padding:8px; cursor:pointer; font-family:inherit; }
 .btn-guardar:hover { background:#b090c0; }
-.btn-cancelar { background:#f0f0f0; border:none; border-radius:10px; color:#888; font-size:0.85rem; padding:8px 16px; cursor:pointer; font-family:inherit; }
+.btn-cancelar { background:#333; border:none; border-radius:10px; color:#aaa; font-size:0.85rem; padding:8px 16px; cursor:pointer; font-family:inherit; }
 </style>
 </head>
 <body>
