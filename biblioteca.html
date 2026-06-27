@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca Personal</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1rem; background:transparent; min-height:100vh; }
+.filtros { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1.2rem; }
+.filtro { border:none; border-radius:20px; padding:5px 14px; font-size:0.75rem; font-weight:500; cursor:pointer; transition:all 0.2s; font-family:inherit; background:#f0f0f0; color:#888; }
+.filtro.activo.f-todos    { background:#f0e8f8; color:#7a4a8a; }
+.filtro.activo.f-libro    { background:#e8f0fd; color:#2a5aa0; }
+.filtro.activo.f-pelicula { background:#fde8e8; color:#a03030; }
+.filtro.activo.f-serie    { background:#e8f8ee; color:#2a7a50; }
+.filtro.activo.f-anime    { background:#fdf4e8; color:#8a5a20; }
+.filtro.activo.f-pendiente{ background:#fdf8e0; color:#7a6a10; }
+.filtro.activo.f-terminado{ background:#e8f8e8; color:#2a6a2a; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(125px,1fr)); gap:12px; }
+.card { border-radius:16px; overflow:hidden; background:#fff; border:0.5px solid #eee; transition:transform 0.2s, box-shadow 0.2s; cursor:pointer; position:relative; }
+.card:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,0.10); }
+.poster { width:100%; aspect-ratio:2/3; object-fit:cover; display:block; }
+.poster-placeholder { width:100%; aspect-ratio:2/3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; color:#aaa; }
+.card-info { padding:8px 10px 10px; }
+.card-titulo { font-size:0.75rem; font-weight:500; color:#333; line-height:1.3; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-meta { display:flex; justify-content:space-between; align-items:center; }
+.badge { font-size:0.62rem; font-weight:600; padding:2px 7px; border-radius:10px; }
+.b-pelicula { background:#fde8e8; color:#a03030; }
+.b-libro    { background:#e8f0fd; color:#3060b0; }
+.b-serie    { background:#e8f8ee; color:#207050; }
+.b-anime    { background:#fdf4e8; color:#8a5020; }
+.stars { font-size:0.65rem; color:#bbb; }
+.estado-dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; border:1.5px solid #fff; }
+.d-pendiente { background:#f0c840; }
+.d-en-curso  { background:#60a8f0; }
+.d-terminado { background:#50c878; }
+.card-add { border-radius:16px; aspect-ratio:2/3; border:1.5px dashed #ddd; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; color:#bbb; font-size:0.72rem; cursor:pointer; background:transparent; transition:all 0.2s; font-family:inherit; }
+.card-add:hover { border-color:#bbb; color:#999; }
+.leyenda { display:flex; gap:12px; margin-top:1rem; flex-wrap:wrap; }
+.leyenda-item { display:flex; align-items:center; gap:4px; font-size:0.65rem; color:#aaa; }
+.leyenda-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:#fff; border-radius:20px; padding:1.5rem; width:90%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,0.15); }
+.modal h3 { font-size:0.9rem; font-weight:600; color:#333; margin-bottom:1rem; }
+.modal-campos { display:flex; flex-direction:column; gap:8px; margin-bottom:1rem; }
+.inp { width:100%; background:#f8f8f8; border:1px solid #eee; border-radius:10px; padding:8px 12px; font-size:0.82rem; font-family:inherit; color:#333; outline:none; }
+.inp:focus { border-color:#c0a0d0; }
+.sel { appearance:none; cursor:pointer; }
+.modal-btns { display:flex; gap:8px; }
+.btn-guardar { flex:1; background:#c0a0d0; border:none; border-radius:10px; color:#fff; font-size:0.85rem; font-weight:600; padding:8px; cursor:pointer; font-family:inherit; }
+.btn-guardar:hover { background:#b090c0; }
+.btn-cancelar { background:#f0f0f0; border:none; border-radius:10px; color:#888; font-size:0.85rem; padding:8px 16px; cursor:pointer; font-family:inherit; }
+</style>
+</head>
+<body>
+
+<div class="filtros" id="filtros">
+  <button class="filtro f-todos activo"     data-f="todos">Todos</button>
+  <button class="filtro f-libro"            data-f="Libro">Libros</button>
+  <button class="filtro f-pelicula"         data-f="Pelicula">Películas</button>
+  <button class="filtro f-serie"            data-f="Serie">Series</button>
+  <button class="filtro f-anime"            data-f="Anime">Anime</button>
+  <button class="filtro f-pendiente"        data-f="Pendiente">Pendiente</button>
+  <button class="filtro f-terminado"        data-f="Terminado">Terminado</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="leyenda">
+  <div class="leyenda-item"><div class="leyenda-dot" style="background:#f0c840"></div>Pendiente</div>
+  <div class="leyenda-item"><div class="leyenda-dot" style="background:#60a8f0"></div>En curso</div>
+  <div class="leyenda-item"><div class="leyenda-dot" style="background:#50c878"></div>Terminado</div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Agregar título</h3>
+    <div class="modal-campos">
+      <input class="inp" id="m-titulo" placeholder="Título"/>
+      <input class="inp" id="m-portada" placeholder="URL de portada (opcional)"/>
+      <select class="inp sel" id="m-tipo">
+        <option value="Pelicula">Película</option>
+        <option value="Libro">Libro</option>
+        <option value="Serie">Serie</option>
+        <option value="Anime">Anime</option>
+      </select>
+      <select class="inp sel" id="m-estado">
+        <option value="Pendiente">Pendiente</option>
+        <option value="En curso">En curso</option>
+        <option value="Terminado">Terminado</option>
+      </select>
+      <select class="inp sel" id="m-stars">
+        <option value="">Sin calificación</option>
+        <option value="★☆☆☆☆">★☆☆☆☆</option>
+        <option value="★★☆☆☆">★★☆☆☆</option>
+        <option value="★★★☆☆">★★★☆☆</option>
+        <option value="★★★★☆">★★★★☆</option>
+        <option value="★★★★★">★★★★★</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" id="btn-cancelar">Cancelar</button>
+      <button class="btn-guardar" id="btn-guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const bgMap   = { Pelicula:['#fde8e8','#f8d0d0'], Libro:['#e8f0fd','#d0dff8'], Serie:['#e8f8ee','#d0f0dc'], Anime:['#fdf4e8','#f8e4c8'] };
+const iconMap = { Libro:'📖', Pelicula:'🎬', Serie:'📺', Anime:'✨' };
+let filtro = 'todos';
+let items = [];
+
+try { const s=localStorage.getItem('biblioteca_items'); if(s) items=JSON.parse(s); } catch(e){}
+if (!items.length) items = [
+  { titulo:'The Conjuring',        tipo:'Pelicula', estado:'Terminado', stars:'★★★★★', portada:'https://upload.wikimedia.org/wikipedia/en/thumb/5/5e/TheConjuringPoster.jpg/220px-TheConjuringPoster.jpg' },
+  { titulo:'Dune',                 tipo:'Libro',    estado:'En curso',  stars:'★★★★☆', portada:'https://upload.wikimedia.org/wikipedia/en/d/d6/Dune-Frank_Herbert_%281965%29_First_edition.jpg' },
+  { titulo:'Inception',            tipo:'Pelicula', estado:'Terminado', stars:'★★★★★', portada:'https://upload.wikimedia.org/wikipedia/en/2/2e/Inception_%282010%29_theatrical_poster.jpg' },
+  { titulo:'Jujutsu Kaisen',       tipo:'Anime',    estado:'En curso',  stars:'★★★★★', portada:'https://upload.wikimedia.org/wikipedia/en/8/8c/Jujutsu_Kaisen_Key_Visual.jpg' },
+];
+
+function guardar() { try { localStorage.setItem('biblioteca_items', JSON.stringify(items)); } catch(e){} }
+function estadoClass(e) { return e==='Pendiente'?'d-pendiente':e==='En curso'?'d-en-curso':'d-terminado'; }
+
+document.getElementById('filtros').addEventListener('click', e => {
+  const btn = e.target.closest('.filtro');
+  if (!btn) return;
+  filtro = btn.dataset.f;
+  document.querySelectorAll('.filtro').forEach(b => b.classList.remove('activo'));
+  btn.classList.add('activo');
+  render();
+});
+
+document.getElementById('btn-cancelar').addEventListener('click', () => document.getElementById('modal').classList.remove('open'));
+document.getElementById('btn-guardar').addEventListener('click', () => {
+  const titulo = document.getElementById('m-titulo').value.trim();
+  if (!titulo) return;
+  items.push({
+    titulo,
+    portada: document.getElementById('m-portada').value.trim(),
+    tipo:    document.getElementById('m-tipo').value,
+    estado:  document.getElementById('m-estado').value,
+    stars:   document.getElementById('m-stars').value,
+  });
+  guardar(); render();
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('m-titulo').value='';
+  document.getElementById('m-portada').value='';
+});
+
+function render() {
+  const lista = filtro==='todos' ? items : items.filter(i => i.tipo===filtro || i.estado===filtro);
+  const grid = document.getElementById('grid');
+  grid.innerHTML = lista.map((item, idx) => {
+    const bg = bgMap[item.tipo]||['#f0f0f0','#e0e0e0'];
+    return `<div class="card">
+      <div class="estado-dot ${estadoClass(item.estado)}"></div>
+      ${item.portada
+        ? `<img class="poster" src="${item.portada}" alt="${item.titulo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+           <div class="poster-placeholder" style="display:none;background:linear-gradient(160deg,${bg[0]},${bg[1]})">
+             <span style="font-size:2rem">${iconMap[item.tipo]||'📖'}</span>
+             <span style="text-align:center;padding:0 8px;font-size:11px;color:#888">${item.titulo}</span>
+           </div>`
+        : `<div class="poster-placeholder" style="background:linear-gradient(160deg,${bg[0]},${bg[1]})">
+             <span style="font-size:2rem">${iconMap[item.tipo]||'📖'}</span>
+             <span style="text-align:center;padding:0 8px;font-size:11px;color:#888">${item.titulo}</span>
+           </div>`
+      }
+      <div class="card-info">
+        <div class="card-titulo" title="${item.titulo}">${item.titulo}</div>
+        <div class="card-meta">
+          <span class="badge b-${item.tipo.toLowerCase()}">${item.tipo}</span>
+          <span class="stars">${item.stars}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `<button class="card-add" onclick="document.getElementById('modal').classList.add('open')">
+    <span style="font-size:1.4rem">+</span>
+    <span>Agregar</span>
+  </button>`;
+}
+render();
+</script>
+</body>
+</html>
