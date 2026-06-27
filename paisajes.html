@@ -6,84 +6,68 @@
 <title>Paisaje del día</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    min-height: 100vh;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  html, body {
+    width: 100%; height: 100%;
+    background: #191919;
     overflow: hidden;
   }
   .card {
     position: relative;
     width: 100%;
-    
-    min-height: 100vh;
-    
-    overflow: hidden;
-    background: #222;
+    height: 100vh;
+    background: #191919;
   }
   .foto {
     width: 100%;
-    height: 100vh;
+    height: 100%;
     object-fit: cover;
     display: block;
-    transition: opacity 0.8s ease;
+    opacity: 0;
+    transition: opacity 1s ease;
   }
-  .foto.loading { opacity: 0; }
+  .foto.visible { opacity: 1; }
   .overlay {
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    padding: 2rem 1.8rem 1.5rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+    padding: 2rem 2rem 1.5rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
   }
   .lugar {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     letter-spacing: 0.02em;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.6);
     margin-bottom: 0.3rem;
   }
   .pais {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.75);
-    letter-spacing: 0.08em;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
   }
-  .foto-credit {
+  .credit {
     position: absolute;
-    top: 12px; right: 14px;
-    font-size: 0.65rem;
-    color: rgba(255,255,255,0.5);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    top: 10px; right: 12px;
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.45);
+    font-family: -apple-system, sans-serif;
   }
-  .foto-credit a { color: inherit; text-decoration: none; }
-  .loading-state {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255,255,255,0.3);
-    font-size: 0.85rem;
-  }
+  .credit a { color: inherit; text-decoration: none; }
 </style>
 </head>
 <body>
-<div class="card" id="card">
-  <div class="loading-state" id="loading">Cargando paisaje...</div>
-  <img class="foto loading" id="foto" alt="Paisaje del día"/>
+<div class="card">
+  <img class="foto" id="foto" alt="Paisaje del día"/>
   <div class="overlay">
     <div class="lugar" id="lugar"></div>
     <div class="pais" id="pais"></div>
   </div>
-  <div class="foto-credit" id="credit"></div>
+  <div class="credit" id="credit"></div>
 </div>
-
 <script>
 const ACCESS_KEY = 'akvWKEesAv1t1lsEIZSc6AL7MfTkGTn9YD5o7cUdoDU';
 
@@ -131,26 +115,16 @@ const hoy = new Date();
 const idx = (hoy.getFullYear() * 365 + hoy.getMonth() * 31 + hoy.getDate()) % lugares.length;
 const destino = lugares[idx];
 
-const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(destino.query)}&orientation=landscape&client_id=${ACCESS_KEY}`;
-
-fetch(url)
+fetch(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(destino.query)}&orientation=landscape&client_id=${ACCESS_KEY}`)
   .then(r => r.json())
   .then(data => {
     const img = document.getElementById('foto');
-    const src = data.urls.regular;
-    const photographer = data.user.name;
-    const profileUrl = data.user.links.html + '?utm_source=paisajes_widget&utm_medium=referral';
-
+    img.onload = () => img.classList.add('visible');
+    img.src = data.urls.regular;
     document.getElementById('lugar').textContent = destino.lugar;
     document.getElementById('pais').textContent = destino.pais;
-    document.getElementById('credit').innerHTML = `Foto: <a href="${profileUrl}" target="_blank">${photographer}</a> / Unsplash`;
-    document.getElementById('loading').style.display = 'none';
-
-    img.onload = () => img.classList.remove('loading');
-    img.src = src;
-  })
-  .catch(() => {
-    document.getElementById('loading').textContent = 'No se pudo cargar la imagen.';
+    const profileUrl = data.user.links.html + '?utm_source=paisajes_widget&utm_medium=referral';
+    document.getElementById('credit').innerHTML = `Foto: <a href="${profileUrl}" target="_blank">${data.user.name}</a> / Unsplash`;
   });
 </script>
 </body>
