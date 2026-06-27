@@ -11,6 +11,35 @@
     background: #191919;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     padding: 1.2rem;
+    overflow-x: hidden;
+    position: relative;
+  }
+  .particles {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .particle {
+    position: absolute;
+    top: -40px;
+    animation: caer linear infinite;
+    opacity: 0;
+  }
+  @keyframes caer {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    5%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+  }
+  .contenido { position: relative; z-index: 1; }
+  .estacion-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: #555;
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
   }
   .toolbar {
     display: flex;
@@ -27,9 +56,7 @@
     color: #e8e8e8;
     font-size: 0.9rem;
     font-family: inherit;
-    resize: none;
     height: 42px;
-    line-height: 1.5;
     outline: none;
     transition: border-color 0.2s;
   }
@@ -52,7 +79,7 @@
   .btn-add:hover { background: #4a4a4a; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
   }
   .nota {
@@ -84,10 +111,7 @@
     align-items: center;
     margin-top: 0.6rem;
   }
-  .nota-fecha {
-    font-size: 0.65rem;
-    color: rgba(0,0,0,0.4);
-  }
+  .nota-fecha { font-size: 0.65rem; color: rgba(0,0,0,0.4); }
   .btn-delete {
     background: none;
     border: none;
@@ -110,33 +134,60 @@
 </style>
 </head>
 <body>
-<div class="toolbar">
-  <textarea class="input-nota" id="input" placeholder="Escribe una nota rápida..." rows="1"></textarea>
-  <button class="btn-add" id="btnAdd" title="Agregar nota">+</button>
+<div class="particles" id="particles"></div>
+<div class="contenido">
+  <div class="estacion-label" id="estacion"></div>
+  <div class="toolbar">
+    <input type="text" class="input-nota" id="input" placeholder="Escribe una nota rápida..."/>
+    <button class="btn-add" id="btnAdd">+</button>
+  </div>
+  <div class="grid" id="grid"></div>
 </div>
-<div class="grid" id="grid"></div>
 
 <script>
 const colores = [
-  '#ffd166', '#ffa07a', '#98d8c8', '#c3b1e1',
-  '#a8d8ea', '#f7c59f', '#b5ead7', '#ffc8dd',
-  '#caffbf', '#fdffb6', '#e0c3fc', '#90e0ef'
+  '#ffd166','#ffa07a','#98d8c8','#c3b1e1',
+  '#a8d8ea','#f7c59f','#b5ead7','#ffc8dd',
+  '#caffbf','#fdffb6','#e0c3fc','#90e0ef'
 ];
 
+// Estación hemisferio sur
+const mes = new Date().getMonth() + 1;
+let estacion, estNombre;
+if (mes >= 3 && mes <= 5)       { estacion = 'otono';     estNombre = '🍂 Otoño'; }
+else if (mes >= 6 && mes <= 8)  { estacion = 'invierno';  estNombre = '❄️ Invierno'; }
+else if (mes >= 9 && mes <= 11) { estacion = 'primavera'; estNombre = '🌸 Primavera'; }
+else                             { estacion = 'verano';    estNombre = '☀️ Verano'; }
+
+document.getElementById('estacion').textContent = estNombre;
+
+const cfgs = {
+  otono:     { chars: ['🍂','🍁','🍃'], count: 14, size: [12,20], dur: [5,9],  sway: 60, opacity: 0.55 },
+  invierno:  { chars: ['❄','·','*'],    count: 20, size: [8,14],  dur: [5,10], sway: 25, opacity: 0.4  },
+  primavera: { chars: ['✿','❀','·'],    count: 16, size: [10,17], dur: [5,8],  sway: 50, opacity: 0.5  },
+  verano:    { chars: ['✦','·','★'],    count: 12, size: [6,13],  dur: [4,7],  sway: 40, opacity: 0.35 },
+};
+
+const cfg = cfgs[estacion];
+const pContainer = document.getElementById('particles');
+for (let i = 0; i < cfg.count; i++) {
+  const el = document.createElement('span');
+  el.className = 'particle';
+  el.textContent = cfg.chars[Math.floor(Math.random() * cfg.chars.length)];
+  const size = cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]);
+  const dur  = cfg.dur[0]  + Math.random() * (cfg.dur[1]  - cfg.dur[0]);
+  const delay = Math.random() * -12;
+  const left  = Math.random() * 100;
+  el.style.cssText = `left:${left}%;font-size:${size}px;animation-duration:${dur}s;animation-delay:${delay}s;opacity:${cfg.opacity};color:#aaa;`;
+  pContainer.appendChild(el);
+}
+
+// Notas
 let notas = [];
+try { const s = localStorage.getItem('notas_rapidas'); if(s) notas = JSON.parse(s); } catch(e){}
 
-try {
-  const saved = localStorage.getItem('notas_rapidas');
-  if (saved) notas = JSON.parse(saved);
-} catch(e) {}
-
-function guardar() {
-  try { localStorage.setItem('notas_rapidas', JSON.stringify(notas)); } catch(e) {}
-}
-
-function colorPorIndice(i) {
-  return colores[i % colores.length];
-}
+function guardar() { try { localStorage.setItem('notas_rapidas', JSON.stringify(notas)); } catch(e){} }
+function colorPorIndice(i) { return colores[i % colores.length]; }
 
 function render() {
   const grid = document.getElementById('grid');
@@ -153,10 +204,7 @@ function render() {
     const textarea = document.createElement('textarea');
     textarea.className = 'nota-texto';
     textarea.value = nota.texto;
-    textarea.addEventListener('input', () => {
-      notas[i].texto = textarea.value;
-      guardar();
-    });
+    textarea.addEventListener('input', () => { notas[i].texto = textarea.value; guardar(); });
 
     const footer = document.createElement('div');
     footer.className = 'nota-footer';
@@ -167,13 +215,8 @@ function render() {
 
     const btnDel = document.createElement('button');
     btnDel.className = 'btn-delete';
-    btnDel.title = 'Eliminar';
     btnDel.textContent = '×';
-    btnDel.addEventListener('click', () => {
-      notas.splice(i, 1);
-      guardar();
-      render();
-    });
+    btnDel.addEventListener('click', () => { notas.splice(i, 1); guardar(); render(); });
 
     footer.appendChild(fecha);
     footer.appendChild(btnDel);
@@ -189,20 +232,14 @@ function agregarNota() {
   if (!texto) return;
   const hoy = new Date();
   const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
-  const fecha = `${dias[hoy.getDay()]} ${hoy.getDate()}/${hoy.getMonth()+1}`;
-  notas.unshift({ texto, fecha });
-  guardar();
-  render();
+  notas.unshift({ texto, fecha: `${dias[hoy.getDay()]} ${hoy.getDate()}/${hoy.getMonth()+1}` });
+  guardar(); render();
   input.value = '';
-  input.style.height = '42px';
 }
 
 document.getElementById('btnAdd').addEventListener('click', agregarNota);
 document.getElementById('input').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    agregarNota();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); agregarNota(); }
 });
 
 render();
