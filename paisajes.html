@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paisaje del día</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    min-height: 380px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #222;
+  }
+  .foto {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.8s ease;
+  }
+  .foto.loading { opacity: 0; }
+  .overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 2rem 1.8rem 1.5rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+  }
+  .lugar {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    margin-bottom: 0.3rem;
+  }
+  .pais {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .foto-credit {
+    position: absolute;
+    top: 12px; right: 14px;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.5);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .foto-credit a { color: inherit; text-decoration: none; }
+  .loading-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.3);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="loading-state" id="loading">Cargando paisaje...</div>
+  <img class="foto loading" id="foto" alt="Paisaje del día"/>
+  <div class="overlay">
+    <div class="lugar" id="lugar"></div>
+    <div class="pais" id="pais"></div>
+  </div>
+  <div class="foto-credit" id="credit"></div>
+</div>
+
+<script>
+const ACCESS_KEY = 'akvWKEesAv1t1lsEIZSc6AL7MfTkGTn9YD5o7cUdoDU';
+
+const lugares = [
+  { query: 'patagonia chile landscape', lugar: 'Patagonia', pais: 'Chile' },
+  { query: 'santorini greece', lugar: 'Santorini', pais: 'Grecia' },
+  { query: 'machu picchu peru', lugar: 'Machu Picchu', pais: 'Perú' },
+  { query: 'kyoto japan temple', lugar: 'Kioto', pais: 'Japón' },
+  { query: 'amalfi coast italy', lugar: 'Costa Amalfi', pais: 'Italia' },
+  { query: 'aurora borealis iceland', lugar: 'Aurora Boreal', pais: 'Islandia' },
+  { query: 'grand canyon usa', lugar: 'Gran Cañón', pais: 'Estados Unidos' },
+  { query: 'sahara desert morocco', lugar: 'Desierto del Sahara', pais: 'Marruecos' },
+  { query: 'maldives ocean', lugar: 'Maldivas', pais: 'Maldivas' },
+  { query: 'banff national park canada', lugar: 'Parque Nacional Banff', pais: 'Canadá' },
+  { query: 'rio de janeiro brazil', lugar: 'Río de Janeiro', pais: 'Brasil' },
+  { query: 'hallstatt austria', lugar: 'Hallstatt', pais: 'Austria' },
+  { query: 'torres del paine chile', lugar: 'Torres del Paine', pais: 'Chile' },
+  { query: 'bali temple indonesia', lugar: 'Bali', pais: 'Indonesia' },
+  { query: 'colosseum rome italy', lugar: 'Roma', pais: 'Italia' },
+  { query: 'new zealand fiordland', lugar: 'Fiordland', pais: 'Nueva Zelanda' },
+  { query: 'venice canal italy', lugar: 'Venecia', pais: 'Italia' },
+  { query: 'atacama desert chile', lugar: 'Desierto de Atacama', pais: 'Chile' },
+  { query: 'paris eiffel tower', lugar: 'París', pais: 'Francia' },
+  { query: 'amazon rainforest brazil', lugar: 'Amazonas', pais: 'Brasil' },
+  { query: 'cape town south africa', lugar: 'Ciudad del Cabo', pais: 'Sudáfrica' },
+  { query: 'swiss alps mountain', lugar: 'Alpes Suizos', pais: 'Suiza' },
+  { query: 'angkor wat cambodia', lugar: 'Angkor Wat', pais: 'Camboya' },
+  { query: 'valparaiso chile', lugar: 'Valparaíso', pais: 'Chile' },
+  { query: 'northern lights norway', lugar: 'Lofoten', pais: 'Noruega' },
+  { query: 'budapest hungary night', lugar: 'Budapest', pais: 'Hungría' },
+  { query: 'zhangjiajie china mountain', lugar: 'Zhangjiajie', pais: 'China' },
+  { query: 'patagonia argentina lake', lugar: 'Bariloche', pais: 'Argentina' },
+  { query: 'lisbon portugal city', lugar: 'Lisboa', pais: 'Portugal' },
+  { query: 'lake baikal russia', lugar: 'Lago Baikal', pais: 'Rusia' },
+  { query: 'dubrovnik croatia', lugar: 'Dubrovnik', pais: 'Croacia' },
+  { query: 'uluru australia', lugar: 'Uluru', pais: 'Australia' },
+  { query: 'plitvice lakes croatia', lugar: 'Lagos de Plitvice', pais: 'Croacia' },
+  { query: 'taj mahal india', lugar: 'Taj Mahal', pais: 'India' },
+  { query: 'galapagos islands ecuador', lugar: 'Islas Galápagos', pais: 'Ecuador' },
+  { query: 'copenhagen denmark', lugar: 'Copenhague', pais: 'Dinamarca' },
+  { query: 'easter island chile', lugar: 'Isla de Pascua', pais: 'Chile' },
+];
+
+const hoy = new Date();
+const idx = (hoy.getFullYear() * 365 + hoy.getMonth() * 31 + hoy.getDate()) % lugares.length;
+const destino = lugares[idx];
+
+const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(destino.query)}&orientation=landscape&client_id=${ACCESS_KEY}`;
+
+fetch(url)
+  .then(r => r.json())
+  .then(data => {
+    const img = document.getElementById('foto');
+    const src = data.urls.regular;
+    const photographer = data.user.name;
+    const profileUrl = data.user.links.html + '?utm_source=paisajes_widget&utm_medium=referral';
+
+    document.getElementById('lugar').textContent = destino.lugar;
+    document.getElementById('pais').textContent = destino.pais;
+    document.getElementById('credit').innerHTML = `Foto: <a href="${profileUrl}" target="_blank">${photographer}</a> / Unsplash`;
+    document.getElementById('loading').style.display = 'none';
+
+    img.onload = () => img.classList.remove('loading');
+    img.src = src;
+  })
+  .catch(() => {
+    document.getElementById('loading').textContent = 'No se pudo cargar la imagen.';
+  });
+</script>
+</body>
+</html>
