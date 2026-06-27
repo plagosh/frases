@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notas rápidas</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: #191919;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 1.2rem;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.2rem;
+  }
+  .input-nota {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    color: #e8e8e8;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: none;
+    height: 42px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-nota:focus { border-color: #666; }
+  .btn-add {
+    background: #3a3a3a;
+    border: none;
+    border-radius: 10px;
+    color: #e8e8e8;
+    font-size: 1.4rem;
+    width: 42px;
+    height: 42px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-add:hover { background: #4a4a4a; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .nota {
+    border-radius: 12px;
+    padding: 1rem;
+    min-height: 120px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .nota-texto {
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: rgba(0,0,0,0.75);
+    word-break: break-word;
+    flex: 1;
+    outline: none;
+    background: transparent;
+    border: none;
+    resize: none;
+    font-family: inherit;
+    width: 100%;
+    cursor: text;
+  }
+  .nota-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.6rem;
+  }
+  .nota-fecha {
+    font-size: 0.65rem;
+    color: rgba(0,0,0,0.4);
+  }
+  .btn-delete {
+    background: none;
+    border: none;
+    color: rgba(0,0,0,0.3);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .btn-delete:hover { color: rgba(0,0,0,0.6); }
+  .empty {
+    text-align: center;
+    color: #555;
+    font-size: 0.85rem;
+    padding: 2rem 0;
+    grid-column: 1/-1;
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <textarea class="input-nota" id="input" placeholder="Escribe una nota rápida..." rows="1"></textarea>
+  <button class="btn-add" id="btnAdd" title="Agregar nota">+</button>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const colores = [
+  '#ffd166', '#ffa07a', '#98d8c8', '#c3b1e1',
+  '#a8d8ea', '#f7c59f', '#b5ead7', '#ffc8dd',
+  '#caffbf', '#fdffb6', '#e0c3fc', '#90e0ef'
+];
+
+let notas = [];
+
+try {
+  const saved = localStorage.getItem('notas_rapidas');
+  if (saved) notas = JSON.parse(saved);
+} catch(e) {}
+
+function guardar() {
+  try { localStorage.setItem('notas_rapidas', JSON.stringify(notas)); } catch(e) {}
+}
+
+function colorPorIndice(i) {
+  return colores[i % colores.length];
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if (notas.length === 0) {
+    grid.innerHTML = '<div class="empty">Sin notas todavía. ¡Agrega una arriba!</div>';
+    return;
+  }
+  notas.forEach((nota, i) => {
+    const div = document.createElement('div');
+    div.className = 'nota';
+    div.style.background = colorPorIndice(i);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'nota-texto';
+    textarea.value = nota.texto;
+    textarea.addEventListener('input', () => {
+      notas[i].texto = textarea.value;
+      guardar();
+    });
+
+    const footer = document.createElement('div');
+    footer.className = 'nota-footer';
+
+    const fecha = document.createElement('span');
+    fecha.className = 'nota-fecha';
+    fecha.textContent = nota.fecha;
+
+    const btnDel = document.createElement('button');
+    btnDel.className = 'btn-delete';
+    btnDel.title = 'Eliminar';
+    btnDel.textContent = '×';
+    btnDel.addEventListener('click', () => {
+      notas.splice(i, 1);
+      guardar();
+      render();
+    });
+
+    footer.appendChild(fecha);
+    footer.appendChild(btnDel);
+    div.appendChild(textarea);
+    div.appendChild(footer);
+    grid.appendChild(div);
+  });
+}
+
+function agregarNota() {
+  const input = document.getElementById('input');
+  const texto = input.value.trim();
+  if (!texto) return;
+  const hoy = new Date();
+  const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const fecha = `${dias[hoy.getDay()]} ${hoy.getDate()}/${hoy.getMonth()+1}`;
+  notas.unshift({ texto, fecha });
+  guardar();
+  render();
+  input.value = '';
+  input.style.height = '42px';
+}
+
+document.getElementById('btnAdd').addEventListener('click', agregarNota);
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    agregarNota();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
