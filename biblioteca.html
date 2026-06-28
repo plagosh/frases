@@ -175,33 +175,35 @@ document.getElementById('filtros').addEventListener('click', e => {
 // Estrellas — delegación en el grid
 document.getElementById('grid').addEventListener('click', e => {
   // Estrellas
-  if (e.target.classList.contains('star')) {
+  const star    = e.target.closest('.star');
+  const dot     = e.target.closest('.estado-dot');
+  const btnEdit = e.target.closest('.btn-edit');
+  const btnDel  = e.target.closest('.btn-del');
+
+  if (star) {
     e.stopPropagation();
-    const idx = parseInt(e.target.dataset.idx);
-    const s   = parseInt(e.target.dataset.s);
+    const idx = parseInt(star.dataset.idx);
+    const s   = parseInt(star.dataset.s);
     items[idx].stars = items[idx].stars === s ? 0 : s;
     if (items[idx].fireId) updateDoc(doc(db,'biblioteca',items[idx].fireId), { stars: items[idx].stars });
     render(); return;
   }
-  // Dot estado — ciclar
-  if (e.target.classList.contains('estado-dot')) {
+  if (dot) {
     e.stopPropagation();
-    const idx = parseInt(e.target.dataset.idx);
+    const idx = parseInt(dot.dataset.idx);
     const cur = ESTADOS.indexOf(items[idx].estado);
     items[idx].estado = ESTADOS[(cur+1)%3];
     if (items[idx].fireId) updateDoc(doc(db,'biblioteca',items[idx].fireId), { estado: items[idx].estado });
     render(); return;
   }
-  // Btn editar
-  if (e.target.classList.contains('btn-edit')) {
+  if (btnEdit) {
     e.stopPropagation();
-    const idx = parseInt(e.target.dataset.idx);
-    abrirEditar(idx); return;
+    const idx = parseInt(btnEdit.dataset.idx);
+    window.abrirEditar(idx); return;
   }
-  // Btn eliminar
-  if (e.target.classList.contains('btn-del')) {
+  if (btnDel) {
     e.stopPropagation();
-    const idx = parseInt(e.target.dataset.idx);
+    const idx = parseInt(btnDel.dataset.idx);
     if (!confirm(`¿Eliminar "${items[idx].titulo}"?`)) return;
     const fireId = items[idx].fireId;
     items.splice(idx,1);
@@ -225,7 +227,7 @@ window.abrirModal = function(limpiar=true) {
   document.getElementById('modal').classList.add('open');
 }
 
-function abrirEditar(idx) {
+window.abrirEditar = function(idx) {
   editIdx=idx;
   const it=items[idx];
   document.getElementById('modal-titulo-h').textContent='Editar título';
@@ -253,13 +255,11 @@ document.getElementById('btn-guardar').addEventListener('click', async () => {
   };
   if (editIdx !== null) {
     const fireId = items[editIdx].fireId;
-    items[editIdx] = { ...entry, fireId };
     if (fireId) await updateDoc(doc(db,'biblioteca',fireId), entry);
   } else {
-    const ref = await addDoc(col, entry);
-    items.push({ ...entry, fireId: ref.id });
+    await addDoc(col, entry);
   }
-  render();
+  // onSnapshot se encarga de actualizar items y render()
   document.getElementById('modal').classList.remove('open');
 });
 
