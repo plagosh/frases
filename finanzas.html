@@ -16,7 +16,6 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .sync-status { font-size:0.65rem; color:#555; text-align:right; margin-bottom:0.5rem; }
 .sync-status.ok { color:#4caf82; }
 .sync-status.err { color:#e07070; }
-.metricas-top { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:1rem; }
 .card { background:#242424; border-radius:12px; padding:0.9rem 1rem; }
 .card-label { font-size:0.67rem; color:#777; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
 .card-valor { font-size:1.1rem; font-weight:600; }
@@ -25,18 +24,12 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .card-valor.pos { color:#4caf82; }
 .card-valor.neg { color:#e07070; }
 .card-pct { font-size:0.68rem; color:#777; margin-top:2px; }
-.pct-falta { background:#242424; border-radius:10px; padding:0.7rem 1rem; margin-bottom:1rem; }
-.pct-label { font-size:0.68rem; color:#777; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
-.pct-barra-track { background:#2e2e2e; border-radius:6px; height:10px; overflow:hidden; }
-.pct-barra-fill { height:100%; border-radius:6px; background:linear-gradient(to right,#4caf82,#ffd166,#e07070); transition:width 0.6s; }
-.pct-textos { display:flex; justify-content:space-between; margin-top:4px; font-size:0.7rem; color:#aaa; }
 .seccion-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:0.8rem 0 0.5rem; }
 .cat-bloque { background:#242424; border-radius:10px; margin-bottom:6px; overflow:hidden; }
 .cat-header { display:flex; align-items:center; gap:8px; padding:0.6rem 0.9rem; cursor:pointer; user-select:none; }
 .cat-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .cat-nombre { font-size:0.82rem; color:#ccc; flex:1; }
 .cat-monto { font-size:0.82rem; color:#aaa; font-weight:500; }
-.cat-monto-real { font-size:0.72rem; color:#4caf82; margin-left:4px; }
 .cat-arrow { font-size:0.7rem; color:#555; transition:transform 0.2s; margin-left:6px; }
 .cat-arrow.open { transform:rotate(90deg); }
 .cat-detalle { display:none; border-top:1px solid #2e2e2e; }
@@ -82,7 +75,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
 
   <div class="header">
-    <div class="titulo">💰 Presupuesto</div>
+    <div class="titulo"></div>
     <div class="mes-nav">
       <button class="btn-mes" id="btn-prev">‹</button>
       <div class="mes-actual" id="mes-label"></div>
@@ -90,23 +83,6 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
     </div>
   </div>
   <div class="sync-status" id="sync-status">Conectando…</div>
-
-  <div class="metricas-top">
-    <div class="card"><div class="card-label">Ingresos</div><div class="card-valor ingreso" id="v-ingresos">$0</div><div class="card-pct">100%</div></div>
-    <div class="card"><div class="card-label">Presupuestado</div><div class="card-valor gasto" id="v-gastos">$0</div><div class="card-pct" id="v-gastos-pct">0%</div></div>
-    <div class="card"><div class="card-label">Gastado real</div><div class="card-valor neg" id="v-real">$0</div><div class="card-pct" id="v-real-pct">0%</div></div>
-  </div>
-  <div class="metricas-top">
-    <div class="card"><div class="card-label">Balance estimado</div><div class="card-valor" id="v-balance">$0</div><div class="card-pct" id="v-balance-pct"></div></div>
-    <div class="card"><div class="card-label">Balance real</div><div class="card-valor" id="v-balance-real">$0</div><div class="card-pct" id="v-balance-real-pct"></div></div>
-    <div class="card"><div class="card-label">Diferencia</div><div class="card-valor" id="v-diff">$0</div><div class="card-pct" id="v-diff-pct"></div></div>
-  </div>
-
-  <div class="pct-falta">
-    <div class="pct-label">Gasto real vs ingreso</div>
-    <div class="pct-barra-track"><div class="pct-barra-fill" id="pct-barra" style="width:0%"></div></div>
-    <div class="pct-textos"><span id="pct-left">—</span><span id="pct-right">0% usado</span></div>
-  </div>
 
   <div class="seccion-titulo">Presupuesto por categoría — clic para ver y editar</div>
   <div id="categorias"></div>
@@ -133,7 +109,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -209,7 +185,6 @@ const hoy = new Date();
 let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
 let mesData = { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[] };
-let gastosReales = {};
 
 function claveDoc()  { return `presupuesto_${anio}_${mesIdx}`; }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
@@ -227,15 +202,6 @@ async function cargarMes() {
 async function guardarMes() {
   try { await setDoc(doc(db,'finanzas',claveDoc()), mesData); setSyncStatus('✓ Guardado','ok'); }
   catch(e) { setSyncStatus('Error al guardar','err'); }
-}
-
-async function cargarGastosReales() {
-  gastosReales = {};
-  try {
-    const mesStr = `${anio}-${String(mesIdx+1).padStart(2,'0')}`;
-    const snap = await getDocs(query(collection(db,'gastos'), where('mesKey','==',mesStr)));
-    snap.forEach(d => { const g=d.data(); if(g.catKey) gastosReales[g.catKey]=(gastosReales[g.catKey]||0)+(g.monto||0); });
-  } catch(e) {}
 }
 
 function montoBase(catKey,id) { return CATS_DEF.find(c=>c.key===catKey)?.conceptos.find(c=>c.id===id)?.monto??0; }
@@ -279,32 +245,8 @@ function crearInputMonto(val,base,catKey,id) {
     mesData.overrides[catKey][id]=v;
     await guardarMes();
     inp.classList.toggle('modificado',v!==parseInt(inp.dataset.base));
-    actualizarMetricas();
-  });
+    });
   return inp;
-}
-
-function actualizarMetricas() {
-  const ing=mesData.ingresos||BASE_INGRESOS;
-  const totalPresup=CATS_DEF.reduce((a,cat)=>a+getTotalCat(cat.key),0);
-  const totalReal=Object.values(gastosReales).reduce((a,v)=>a+v,0);
-  const balPresup=ing-totalPresup, balReal=ing-totalReal, diff=totalPresup-totalReal;
-  document.getElementById('v-ingresos').textContent=fmt(ing);
-  document.getElementById('v-gastos').textContent=fmt(totalPresup);
-  document.getElementById('v-gastos-pct').textContent=(totalPresup/ing*100).toFixed(1)+'% del ingreso';
-  document.getElementById('v-real').textContent=fmt(totalReal);
-  document.getElementById('v-real-pct').textContent=(totalReal/ing*100).toFixed(1)+'% del ingreso';
-  const bEl=document.getElementById('v-balance'); bEl.textContent=(balPresup<0?'-':'')+fmt(balPresup); bEl.className='card-valor '+(balPresup>=0?'pos':'neg');
-  document.getElementById('v-balance-pct').textContent=(Math.abs(balPresup/ing*100)).toFixed(1)+'% '+(balPresup>=0?'disponible':'déficit');
-  const brEl=document.getElementById('v-balance-real'); brEl.textContent=(balReal<0?'-':'')+fmt(balReal); brEl.className='card-valor '+(balReal>=0?'pos':'neg');
-  document.getElementById('v-balance-real-pct').textContent=(Math.abs(balReal/ing*100)).toFixed(1)+'% '+(balReal>=0?'disponible':'déficit');
-  const dEl=document.getElementById('v-diff'); dEl.textContent=(diff>=0?'Menos: ':'Más: ')+fmt(diff); dEl.className='card-valor '+(diff>=0?'pos':'neg');
-  document.getElementById('v-diff-pct').textContent=diff>=0?'bajo presupuesto':'sobre presupuesto';
-  const pctU=Math.min(totalReal/ing*100,100);
-  document.getElementById('pct-barra').style.width=pctU+'%';
-  document.getElementById('pct-left').textContent=balReal>=0?`Quedan ${fmt(balReal)} disponibles`:`Déficit de ${fmt(Math.abs(balReal))}`;
-  document.getElementById('pct-right').textContent=pctU.toFixed(1)+'% usado';
-  CATS_DEF.forEach(cat=>{ const el=document.getElementById('total-'+cat.key); if(el) el.textContent=fmt(getTotalCat(cat.key)); const elR=document.getElementById('real-'+cat.key); if(elR) elR.textContent=gastosReales[cat.key]?'← real: '+fmt(gastosReales[cat.key]):''; });
 }
 
 function render() {
@@ -313,7 +255,7 @@ function render() {
   CATS_DEF.forEach(cat=>{
     const bloque=document.createElement('div'); bloque.className='cat-bloque';
     const header=document.createElement('div'); header.className='cat-header';
-    header.innerHTML=`<div class="cat-dot" style="background:${cat.color}"></div><div class="cat-nombre">${cat.label}</div><div class="cat-monto" id="total-${cat.key}">${fmt(getTotalCat(cat.key))}</div><span class="cat-monto-real" id="real-${cat.key}"></span><div class="cat-arrow">▶</div>`;
+    header.innerHTML=`<div class="cat-dot" style="background:${cat.color}"></div><div class="cat-nombre">${cat.label}</div><div class="cat-monto" id="total-${cat.key}">${fmt(getTotalCat(cat.key))}</div><div class="cat-arrow">▶</div>`;
     const detalle=document.createElement('div'); detalle.className='cat-detalle';
 
     cat.conceptos.forEach(con=>{
@@ -387,13 +329,11 @@ function render() {
     header.addEventListener('click',()=>{ const arrow=header.querySelector('.cat-arrow'); const isOpen=detalle.classList.toggle('open'); arrow.classList.toggle('open',isOpen); });
     bloque.appendChild(header); bloque.appendChild(detalle); cont.appendChild(bloque);
   });
-  actualizarMetricas();
 }
 
 async function init() {
   setSyncStatus('Cargando…');
   await cargarMes();
-  await cargarGastosReales();
   render();
 }
 

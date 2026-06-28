@@ -15,7 +15,6 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .sync-status { font-size:0.65rem; color:#555; text-align:right; margin-bottom:0.7rem; }
 .sync-status.ok { color:#4caf82; }
 .sync-status.err { color:#e07070; }
-.resumen-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:1rem; }
 .card { background:#242424; border-radius:12px; padding:0.8rem 1rem; }
 .card-label { font-size:0.67rem; color:#777; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
 .card-valor { font-size:1.05rem; font-weight:600; }
@@ -63,12 +62,6 @@ select.inp { appearance:none; cursor:pointer; }
     </div>
   </div>
   <div class="sync-status" id="sync-status">Conectando…</div>
-
-  <div class="resumen-cards">
-    <div class="card"><div class="card-label">Total gastado</div><div class="card-valor neg" id="v-total">$0</div></div>
-    <div class="card"><div class="card-label">N° transacciones</div><div class="card-valor neu" id="v-count">0</div></div>
-    <div class="card"><div class="card-label">Promedio / gasto</div><div class="card-valor neu" id="v-avg">$0</div></div>
-  </div>
 
   <div class="form-nuevo">
     <div class="form-titulo">+ Registrar gasto</div>
@@ -166,9 +159,6 @@ function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-sta
 function renderResumen() {
   const total=gastos.reduce((a,g)=>a+g.monto,0);
   const count=gastos.length;
-  document.getElementById('v-total').textContent=fmt(total);
-  document.getElementById('v-count').textContent=count;
-  document.getElementById('v-avg').textContent=count>0?fmt(total/count):'$0';
   const porCat={};
   gastos.forEach(g=>{ porCat[g.catKey]=(porCat[g.catKey]||0)+g.monto; });
   const maxVal=Math.max(...Object.values(porCat),1);

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Finanzas</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1.2rem; color:#e0e0e0; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.titulo { font-size:0.95rem; font-weight:600; color:#e0e0e0; }
+.mes-nav { display:flex; align-items:center; gap:6px; }
+.btn-mes { background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; color:#e0e0e0; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
+.btn-mes:hover { background:#3a3a3a; }
+.mes-actual { font-size:0.85rem; font-weight:600; color:#a0a0f0; min-width:110px; text-align:center; }
+.sync-status { font-size:0.65rem; color:#555; text-align:right; margin-bottom:0.8rem; }
+.sync-status.ok { color:#4caf82; }
+.sync-status.err { color:#e07070; }
+
+/* Cards resumen */
+.layout { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:start; }
+.cards-col { display:flex; flex-direction:column; gap:6px; }
+.main-col { min-width:0; }
+.card { background:#242424; border-radius:10px; padding:0.6rem 0.8rem; }
+.card-label { font-size:0.67rem; color:#777; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
+.card-valor { font-size:0.95rem; font-weight:600; }
+.card-valor.pos { color:#4caf82; }
+.card-valor.neg { color:#e07070; }
+.card-valor.neu { color:#a0a0f0; }
+.card-sub { font-size:0.68rem; color:#777; margin-top:2px; }
+
+/* Barra progreso */
+.barra-wrap { background:#242424; border-radius:10px; padding:0.8rem 1rem; margin-bottom:1rem; }
+.barra-label { display:flex; justify-content:space-between; font-size:0.7rem; color:#aaa; margin-bottom:6px; }
+.barra-track { background:#2e2e2e; border-radius:6px; height:12px; overflow:hidden; }
+.barra-fill { height:100%; border-radius:6px; background:linear-gradient(to right,#4caf82,#ffd166,#e07070); transition:width 0.6s; }
+
+/* Alertas */
+.alertas { display:flex; flex-direction:column; gap:5px; margin-bottom:1rem; }
+.alerta { border-radius:8px; padding:0.55rem 0.9rem; font-size:0.78rem; display:flex; align-items:center; gap:8px; }
+.alerta.warn { background:#2a1f0a; border-left:3px solid #ffd166; color:#ffd166; }
+.alerta.danger { background:#2a0a0a; border-left:3px solid #e07070; color:#e07070; }
+.alerta.ok { background:#0a2a1a; border-left:3px solid #4caf82; color:#4caf82; }
+
+/* Sección título */
+.sec-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:1rem 0 0.5rem; }
+
+/* Barras por categoría */
+
+/* Gráfico evolución */
+.chart-wrap { background:#242424; border-radius:12px; padding:1rem; margin-bottom:1rem; overflow-x:auto; }
+.chart-inner { min-width:400px; }
+svg text { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+.leyenda { display:flex; gap:1rem; margin-top:0.6rem; flex-wrap:wrap; }
+.ley-item { display:flex; align-items:center; gap:4px; font-size:0.68rem; color:#aaa; }
+.ley-dot { width:8px; height:8px; border-radius:50%; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="titulo">📊 Dashboard</div>
+  <div class="mes-nav">
+    <button class="btn-mes" id="btn-prev">‹</button>
+    <div class="mes-actual" id="mes-label"></div>
+    <button class="btn-mes" id="btn-next">›</button>
+  </div>
+</div>
+<div class="sync-status" id="sync-status">Cargando…</div>
+
+<!-- Resumen -->
+<div class="layout">
+  <!-- Columna izquierda: 6 cards -->
+  <div class="cards-col" id="cards-resumen"></div>
+
+  <!-- Columna derecha: contenido principal -->
+  <div class="main-col">
+    <!-- Barra global -->
+    <div class="barra-wrap">
+      <div class="barra-label"><span>Gasto real vs ingreso</span><span id="pct-txt">0%</span></div>
+      <div class="barra-track"><div class="barra-fill" id="barra-global" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.68rem;color:#aaa;">
+        <span id="barra-left">—</span><span id="barra-right">—</span>
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="sec-titulo">⚠️ Alertas</div>
+    <div class="alertas" id="alertas"></div>
+
+    <!-- Evolución -->
+    <div class="sec-titulo">Evolución últimos 6 meses</div>
+    <div class="chart-wrap">
+      <div class="chart-inner">
+        <svg id="chart-svg" width="100%" height="160" viewBox="0 0 600 160"></svg>
+      </div>
+      <div class="leyenda">
+        <div class="ley-item"><div class="ley-dot" style="background:#4caf82"></div>Ingresos</div>
+        <div class="ley-item"><div class="ley-dot" style="background:#a0a0f0"></div>Presupuestado</div>
+        <div class="ley-item"><div class="ley-dot" style="background:#e07070"></div>Gastado real</div>
+      </div>
+    </div>
+
+    <!-- Por categoría -->
+    <div class="sec-titulo">Por categoría</div>
+    <div class="chart-wrap">
+      <div class="chart-inner">
+        <svg id="chart-cat" width="100%" height="200" viewBox="0 0 600 200"></svg>
+      </div>
+      <div class="leyenda">
+        <div class="ley-item"><div class="ley-dot" style="background:#a0a0f0"></div>Presupuestado</div>
+        <div class="ley-item"><div class="ley-dot" style="background:#4caf82"></div>Gastado real</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
+  authDomain: "finanzas-personal-12490.firebaseapp.com",
+  projectId: "finanzas-personal-12490",
+  storageBucket: "finanzas-personal-12490.firebasestorage.app",
+  messagingSenderId: "1062344169400",
+  appId: "1:1062344169400:web:75075634e2d4a416b3614d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const BASE_INGRESOS = 2000000;
+const CAT_COLORS = { deudas:'#e07070', hogar:'#7ab8f5', mascotas:'#c3b1e1', transporte:'#ffd166', salud:'#f7c59f', suscripciones:'#90e0ef', variables:'#b5ead7' };
+const CAT_LABELS = { deudas:'Créditos y deudas', hogar:'Hogar y servicios', mascotas:'Mascotas', transporte:'Transporte', salud:'Salud', suscripciones:'Suscripciones', variables:'Variables' };
+const CATS_DEF = [
+  { key:'deudas', conceptos:[{id:'banco_chile',monto:130885},{id:'banco_estado',monto:287581},{id:'caja_andes',monto:240986},{id:'cae',monto:0},{id:'cencosud',monto:0},{id:'falabella',monto:0}] },
+  { key:'hogar',  conceptos:[{id:'arriendo',monto:100000},{id:'arriendo_mama',monto:0},{id:'luz',monto:35000},{id:'agua',monto:10000},{id:'gas',monto:0},{id:'internet',monto:15378},{id:'telefono',monto:25262},{id:'wom',monto:0}] },
+  { key:'mascotas',conceptos:[{id:'sitter',monto:250000},{id:'comida_perros',monto:110000},{id:'comida_gatos',monto:55000},{id:'arena',monto:76000},{id:'vet',monto:0}] },
+  { key:'transporte',conceptos:[{id:'bus',monto:244000},{id:'metro',monto:0},{id:'uber',monto:0}] },
+  { key:'salud',  conceptos:[{id:'remedios',monto:12000},{id:'psicologa',monto:0},{id:'otros_salud',monto:0}] },
+  { key:'suscripciones',conceptos:[{id:'claude',monto:21182},{id:'spotify',monto:6750},{id:'mercadopago',monto:9990},{id:'hbo',monto:3995},{id:'crunchyroll',monto:3990},{id:'bluehosting',monto:7140},{id:'playstation',monto:14441}] },
+  { key:'variables',conceptos:[{id:'mercaderia',monto:0},{id:'feria',monto:0},{id:'delivery',monto:0},{id:'almuerzo',monto:0},{id:'varios',monto:0},{id:'piscina',monto:98000}] },
+];
+
+const hoy = new Date();
+let mesIdx = hoy.getMonth();
+let anio   = hoy.getFullYear();
+
+function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
+function setSyncStatus(msg,cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
+function mesKey(y,m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
+
+function calcPresupuesto(mesDataObj) {
+  const d = mesDataObj || {};
+  let total = 0;
+  CATS_DEF.forEach(cat => {
+    cat.conceptos.forEach(con => {
+      total += d.overrides?.[cat.key]?.[con.id] ?? con.monto;
+    });
+    (d.custom||[]).filter(s=>s.catKey===cat.key).forEach(s => {
+      total += d.overrides?.[s.catKey]?.[s.id] ?? s.monto;
+    });
+  });
+  return total;
+}
+
+function calcPresupuestoCat(cat, mesDataObj) {
+  const d = mesDataObj || {};
+  let total = 0;
+  cat.conceptos.forEach(con => { total += d.overrides?.[cat.key]?.[con.id] ?? con.monto; });
+  (d.custom||[]).filter(s=>s.catKey===cat.key).forEach(s => { total += d.overrides?.[s.catKey]?.[s.id] ?? s.monto; });
+  return total;
+}
+
+async function cargarMes(y, m) {
+  try {
+    const snap = await getDoc(doc(db,'finanzas',`presupuesto_${y}_${m}`));
+    return snap.exists() ? snap.data() : {};
+  } catch(e) { return {}; }
+}
+
+async function cargarGastos(y, m) {
+  const porCat = {};
+  let total = 0;
+  try {
+    const snap = await getDocs(query(collection(db,'gastos'), where('mesKey','==',mesKey(y,m))));
+    snap.forEach(d => { const g=d.data(); if(g.catKey){ porCat[g.catKey]=(porCat[g.catKey]||0)+(g.monto||0); total+=g.monto||0; } });
+  } catch(e) {}
+  return { porCat, total };
+}
+
+async function render() {
+  setSyncStatus('Cargando…');
+  document.getElementById('mes-label').textContent = MESES[mesIdx]+' '+anio;
+
+  const [mesData, { porCat, total: totalReal }] = await Promise.all([
+    cargarMes(anio, mesIdx),
+    cargarGastos(anio, mesIdx)
+  ]);
+
+  const ing = (mesData.ingresos || BASE_INGRESOS);
+  const totalPresup = calcPresupuesto(mesData);
+  const balPresup = ing - totalPresup;
+  const balReal   = ing - totalReal;
+  const diff      = totalReal - totalPresup;
+
+  setSyncStatus('✓ Actualizado', 'ok');
+
+  // --- Cards resumen ---
+  const cards = [
+    { label:'Ingresos',       valor:fmt(ing),         cls:'neu',                  sub:'100%' },
+    { label:'Presupuestado',  valor:fmt(totalPresup),  cls:'neu',                  sub:(totalPresup/ing*100).toFixed(1)+'% del ingreso' },
+    { label:'Gastado real',   valor:fmt(totalReal),    cls: totalReal>ing?'neg':'neu', sub:(totalReal/ing*100).toFixed(1)+'% del ingreso' },
+    { label:'Balance estimado',valor:(balPresup<0?'-':'')+fmt(balPresup), cls:balPresup>=0?'pos':'neg', sub:balPresup>=0?'disponible':'déficit' },
+    { label:'Balance real',   valor:(balReal<0?'-':'')+fmt(balReal),     cls:balReal>=0?'pos':'neg',   sub:balReal>=0?'disponible':'déficit' },
+    { label:'Diferencia',     valor:(diff>0?'+':'')+fmt(Math.abs(diff)), cls:diff<=0?'pos':'neg',       sub:diff<=0?'bajo presupuesto':'sobre presupuesto' },
+  ];
+  document.getElementById('cards-resumen').innerHTML = cards.map(c=>
+    `<div class="card"><div class="card-label">${c.label}</div><div class="card-valor ${c.cls}">${c.valor}</div><div class="card-sub">${c.sub}</div></div>`
+  ).join('');
+
+  // --- Barra global ---
+  const pctU = Math.min(totalReal/ing*100,100);
+  document.getElementById('barra-global').style.width = pctU+'%';
+  document.getElementById('pct-txt').textContent = pctU.toFixed(1)+'% usado';
+  document.getElementById('barra-left').textContent = balReal>=0?`Quedan ${fmt(balReal)}`:` Déficit ${fmt(Math.abs(balReal))}`;
+  document.getElementById('barra-right').textContent = `Real: ${fmt(totalReal)} / Presup: ${fmt(totalPresup)}`;
+
+  // --- Alertas ---
+  const alertasEl = document.getElementById('alertas');
+  const alertas = [];
+  CATS_DEF.forEach(cat => {
+    const presup = calcPresupuestoCat(cat, mesData);
+    const real   = porCat[cat.key] || 0;
+    if (presup === 0 && real === 0) return;
+    const pct = presup > 0 ? real/presup : null;
+    if (pct !== null && pct > 1)
+      alertas.push({ tipo:'danger', msg:`${CAT_LABELS[cat.key]}: ${fmt(real)} gastado vs ${fmt(presup)} presupuestado (+${((pct-1)*100).toFixed(0)}% sobre presupuesto)` });
+    else if (pct !== null && pct > 0.85)
+      alertas.push({ tipo:'warn', msg:`${CAT_LABELS[cat.key]}: ${fmt(real)} de ${fmt(presup)} — ${(pct*100).toFixed(0)}% usado, cerca del límite` });
+  });
+  if (balReal < 0)
+    alertas.unshift({ tipo:'danger', msg:`Déficit real de ${fmt(Math.abs(balReal))} este mes` });
+  if (diff > 0 && diff/totalPresup > 0.1)
+    alertas.unshift({ tipo:'warn', msg:`Gasto real supera presupuesto en ${fmt(diff)} (${(diff/totalPresup*100).toFixed(1)}%)` });
+  if (!alertas.length)
+    alertas.push({ tipo:'ok', msg:'Todo dentro del presupuesto este mes ✓' });
+  alertasEl.innerHTML = alertas.map(a=>`<div class="alerta ${a.tipo}">${a.msg}</div>`).join('');
+
+  // --- Por categoría (barras verticales agrupadas) ---
+  const catsConDatos = CATS_DEF.filter(cat => calcPresupuestoCat(cat,mesData) > 0 || (porCat[cat.key]||0) > 0);
+  const maxCatVal = Math.max(...catsConDatos.flatMap(cat => [calcPresupuestoCat(cat,mesData), porCat[cat.key]||0]), 1);
+  const svgCat = document.getElementById('chart-cat');
+  const CW=600, CH=200, cpadL=55, cpadR=10, cpadT=10, cpadB=50;
+  const chartCW=CW-cpadL-cpadR, chartCH=CH-cpadT-cpadB;
+  const n=catsConDatos.length;
+  const grupW=chartCW/n;
+  const barW=Math.min(grupW*0.35, 18);
+  const gap=barW*0.4;
+
+  let svgContent = '';
+
+  // Grid horizontal
+  [0.25,0.5,0.75,1].forEach(f => {
+    const yv = padT + chartCH - f*chartCH;
+    svgContent += `<line x1="${cpadL}" y1="${yv.toFixed(1)}" x2="${CW-cpadR}" y2="${yv.toFixed(1)}" stroke="#2e2e2e" stroke-width="1"/>`;
+    svgContent += `<text x="${cpadL-4}" y="${(yv+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#444">${fmt(maxCatVal*f).replace('$','').replace(/\./g,'')}</text>`;
+  });
+
+  catsConDatos.forEach((cat, i) => {
+    const presup = calcPresupuestoCat(cat, mesData);
+    const real   = porCat[cat.key] || 0;
+    const cx     = cpadL + i*grupW + grupW/2;
+    const hP     = (presup/maxCatVal)*chartCH;
+    const hR     = (real/maxCatVal)*chartCH;
+    const colorR = real > presup ? '#e07070' : '#4caf82';
+    const xP     = cx - gap/2 - barW;
+    const xR     = cx + gap/2;
+
+    // Barras
+    svgContent += `<rect x="${xP.toFixed(1)}" y="${(cpadT+chartCH-hP).toFixed(1)}" width="${barW}" height="${hP.toFixed(1)}" fill="#a0a0f0" rx="2" opacity="0.75"/>`;
+    svgContent += `<rect x="${xR.toFixed(1)}" y="${(cpadT+chartCH-hR).toFixed(1)}" width="${barW}" height="${hR.toFixed(1)}" fill="${colorR}" rx="2"/>`;
+
+    // Etiqueta abajo — abreviada
+    const label = CAT_LABELS[cat.key].split(' ')[0].slice(0,8);
+    svgContent += `<text x="${cx.toFixed(1)}" y="${(cpadT+chartCH+12).toFixed(1)}" text-anchor="middle" font-size="8" fill="#666">${label}</text>`;
+
+    // Valor real encima de barra real (si tiene datos)
+    if (real > 0) {
+      svgContent += `<text x="${(xR+barW/2).toFixed(1)}" y="${(cpadT+chartCH-hR-3).toFixed(1)}" text-anchor="middle" font-size="7" fill="${colorR}">${fmt(real).replace('$','').replace(/\./g,'k').slice(0,5)}</text>`;
+    }
+  });
+
+  // Eje base
+  svgContent += `<line x1="${cpadL}" y1="${cpadT+chartCH}" x2="${CW-cpadR}" y2="${cpadT+chartCH}" stroke="#3a3a3a" stroke-width="1"/>`;
+
+  svgCat.innerHTML = svgContent;
+
+  // --- Gráfico evolución 6 meses ---
+  const meses6 = [];
+  for (let i=5; i>=0; i--) {
+    let m=mesIdx-i, y=anio;
+    if(m<0){ m+=12; y--; }
+    meses6.push({m,y});
+  }
+  const datos6 = await Promise.all(meses6.map(async ({m,y}) => {
+    const [md, {total:tr}] = await Promise.all([cargarMes(y,m), cargarGastos(y,m)]);
+    return { label:MESES[m].slice(0,3), ing:md.ingresos||BASE_INGRESOS, presup:calcPresupuesto(md), real:tr };
+  }));
+
+  const svg = document.getElementById('chart-svg');
+  const W=600, H=140, padL=50, padR=10, padT=10, padB=30;
+  const chartW=W-padL-padR, chartH=H-padT-padB;
+  const maxY = Math.max(...datos6.flatMap(d=>[d.ing,d.presup,d.real]), 1);
+  const x = i => padL + i*(chartW/(datos6.length-1));
+  const y = v => padT + chartH - (v/maxY)*chartH;
+
+  const linea = (datos, color, dash='') =>
+    `<polyline points="${datos.map((d,i)=>`${x(i).toFixed(1)},${y(d).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2" ${dash?`stroke-dasharray="${dash}"`:''}/>` +
+    datos.map((d,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(d).toFixed(1)}" r="3" fill="${color}"/>`).join('');
+
+  const ejes = datos6.map((d,i)=>
+    `<text x="${x(i).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#555">${d.label}</text>`
+  ).join('');
+
+  const gridY = [0.25,0.5,0.75,1].map(f=>{
+    const yv=padT+chartH-(f*chartH);
+    return `<line x1="${padL}" y1="${yv.toFixed(1)}" x2="${W-padR}" y2="${yv.toFixed(1)}" stroke="#2e2e2e" stroke-width="1"/>
+    <text x="${padL-4}" y="${(yv+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#444">${fmt(maxY*f).replace('$','')}</text>`;
+  }).join('');
+
+  svg.innerHTML = gridY + ejes +
+    linea(datos6.map(d=>d.ing),    '#4caf82') +
+    linea(datos6.map(d=>d.presup), '#a0a0f0', '4 2') +
+    linea(datos6.map(d=>d.real),   '#e07070');
+}
+
+document.getElementById('btn-prev').addEventListener('click', ()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} render(); });
+document.getElementById('btn-next').addEventListener('click', ()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} render(); });
+
+render();
+</script>
+</body>
+</html>
