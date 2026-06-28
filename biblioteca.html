@@ -211,7 +211,7 @@ document.getElementById('grid').addEventListener('click', e => {
 });
 
 // Modal
-function abrirModal(limpiar=true) {
+window.abrirModal = function(limpiar=true) {
   if (limpiar) {
     editIdx=null;
     document.getElementById('modal-titulo-h').textContent='Agregar título';
