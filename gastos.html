@@ -7,10 +7,6 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1.2rem; min-height:100vh; color:#e0e0e0; }
-#login-overlay { display:flex; position:fixed; inset:0; background:#191919; z-index:999; flex-direction:column; align-items:center; justify-content:center; gap:1rem; }
-#login-overlay.hidden { display:none; }
-#app-content { display:none; }
-#app-content.visible { display:block; }
 .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.8rem; }
 .mes-nav { display:flex; align-items:center; gap:6px; }
 .btn-mes { background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; color:#e0e0e0; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
@@ -57,17 +53,7 @@ select.inp { appearance:none; cursor:pointer; }
 </head>
 <body>
 
-<!-- SIN SESIÓN -->
-<div id="login-overlay">
-  <div style="font-size:0.9rem;color:#777;text-align:center;line-height:1.8;">
-    Sesión no iniciada.<br>
-    <a href="https://plagosh.github.io/frases/login.html" target="_blank"
-       style="color:#a0a0f0;font-size:0.85rem;">Abrir login.html para autenticarte →</a>
-  </div>
-</div>
 
-<!-- APP -->
-<div id="app-content">
   <div class="header">
     <div style="width:1px"></div>
     <div class="mes-nav">
@@ -150,7 +136,6 @@ select.inp { appearance:none; cursor:pointer; }
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -163,9 +148,6 @@ const firebaseConfig = {
 
 const app      = initializeApp(firebaseConfig);
 const db       = getFirestore(app);
-const auth     = getAuth(app);
-const provider = new GoogleAuthProvider();
-const ALLOWED_EMAIL = 'plagosh1@gmail.com';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CAT_COLORS = { deudas:'#e07070', hogar:'#7ab8f5', mascotas:'#c3b1e1', transporte:'#ffd166', salud:'#f7c59f', suscripciones:'#90e0ef', variables:'#b5ead7' };
@@ -221,20 +203,11 @@ function suscribir() {
   } catch(e) { setSyncStatus('Error: '+e.message,'err'); }
 }
 
-// Auth
-onAuthStateChanged(auth, user => {
-  if (user && user.email === ALLOWED_EMAIL) {
-    document.getElementById('login-overlay').classList.add('hidden');
-    document.getElementById('app-content').classList.add('visible');
-    document.getElementById('mes-label').textContent = MESES[mesIdx]+' '+anio;
-    document.getElementById('g-fecha').value = hoy.toISOString().split('T')[0];
-    suscribir();
-  } else {
-    document.getElementById('login-overlay').classList.remove('hidden');
-    document.getElementById('app-content').classList.remove('visible');
-  }
-});
 
+
+document.getElementById('mes-label').textContent = MESES[mesIdx]+' '+anio;
+document.getElementById('g-fecha').value = new Date().toISOString().split('T')[0];
+suscribir();
 
 document.getElementById('btn-prev').addEventListener('click', ()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio; suscribir(); });
 document.getElementById('btn-next').addEventListener('click', ()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio; suscribir(); });
