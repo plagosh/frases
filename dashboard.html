@@ -117,7 +117,7 @@ svg text { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, collection, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -133,31 +133,50 @@ const db  = getFirestore(app);
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const BASE_INGRESOS = 2000000;
-const CAT_COLORS = { deudas:'#e07070', hogar:'#7ab8f5', mascotas:'#c3b1e1', transporte:'#ffd166', salud:'#f7c59f', suscripciones:'#90e0ef', variables:'#b5ead7' };
-const CAT_LABELS = { deudas:'Créditos y deudas', hogar:'Hogar y servicios', mascotas:'Mascotas', transporte:'Transporte', salud:'Salud', suscripciones:'Suscripciones', variables:'Variables' };
-const CATS_DEF = [
-  { key:'deudas', conceptos:[{id:'banco_chile',monto:130885},{id:'banco_estado',monto:287581},{id:'caja_andes',monto:240986},{id:'cae',monto:0},{id:'cencosud',monto:0},{id:'falabella',monto:0}] },
-  { key:'hogar',  conceptos:[{id:'arriendo',monto:100000},{id:'arriendo_mama',monto:0},{id:'luz',monto:35000},{id:'agua',monto:10000},{id:'gas',monto:0},{id:'internet',monto:15378},{id:'telefono',monto:25262},{id:'wom',monto:0}] },
-  { key:'mascotas',conceptos:[{id:'sitter',monto:250000},{id:'comida_perros',monto:110000},{id:'comida_gatos',monto:55000},{id:'arena',monto:76000},{id:'vet',monto:0}] },
-  { key:'transporte',conceptos:[{id:'bus',monto:244000},{id:'metro',monto:0},{id:'uber',monto:0}] },
-  { key:'salud',  conceptos:[{id:'remedios',monto:12000},{id:'psicologa',monto:0},{id:'otros_salud',monto:0}] },
-  { key:'suscripciones',conceptos:[{id:'claude',monto:21182},{id:'spotify',monto:6750},{id:'mercadopago',monto:9990},{id:'hbo',monto:3995},{id:'crunchyroll',monto:3990},{id:'bluehosting',monto:7140},{id:'playstation',monto:14441}] },
-  { key:'variables',conceptos:[{id:'mercaderia',monto:0},{id:'feria',monto:0},{id:'delivery',monto:0},{id:'almuerzo',monto:0},{id:'varios',monto:0},{id:'piscina',monto:98000}] },
-];
+
+// Conceptos presupuestados fijos por categoría (igual que en finanzas.html). El nombre/color de la
+// categoría en sí ahora vive en Firestore (colección "categorias") y se resuelve por mes: si el mes
+// ya pasó, se usa el categoriasSnapshot que quedó guardado en ese mes; si es el mes actual o futuro,
+// se usa siempre la lista vigente — mismo criterio que finanzas.html, para que ambos coincidan.
+const CONCEPTOS_DEF = {
+  deudas: [{id:'banco_chile',monto:130885},{id:'banco_estado',monto:287581},{id:'caja_andes',monto:240986},{id:'cae',monto:0},{id:'cencosud',monto:0},{id:'falabella',monto:0}],
+  hogar: [{id:'arriendo',monto:100000},{id:'arriendo_mama',monto:0},{id:'luz',monto:35000},{id:'agua',monto:10000},{id:'gas',monto:0},{id:'internet',monto:15378},{id:'telefono',monto:25262},{id:'wom',monto:0}],
+  mascotas: [{id:'sitter',monto:250000},{id:'comida_perros',monto:110000},{id:'comida_gatos',monto:55000},{id:'arena',monto:76000},{id:'vet',monto:0}],
+  transporte: [{id:'bus',monto:244000},{id:'metro',monto:0},{id:'uber',monto:0}],
+  salud: [{id:'remedios',monto:12000},{id:'psicologa',monto:0},{id:'otros_salud',monto:0}],
+  suscripciones: [{id:'claude',monto:21182},{id:'spotify',monto:6750},{id:'mercadopago',monto:9990},{id:'hbo',monto:3995},{id:'crunchyroll',monto:3990},{id:'bluehosting',monto:7140},{id:'playstation',monto:14441}],
+  variables: [{id:'mercaderia',monto:0},{id:'feria',monto:0},{id:'delivery',monto:0},{id:'almuerzo',monto:0},{id:'varios',monto:0},{id:'piscina',monto:98000}],
+};
+function conceptosDe(catKey) { return CONCEPTOS_DEF[catKey] || []; }
 
 const hoy = new Date();
 let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
+let categoriasLive = []; // [{key,label,color}] vigentes en Firestore
+
+async function cargarCategoriasLive() {
+  const snap = await getDocs(query(collection(db,'categorias'), orderBy('orden','asc')));
+  categoriasLive = snap.docs.map(d=>({key:d.data().key,label:d.data().label,color:d.data().color}));
+}
+
+function esPasado(y,m) { return (y<hoy.getFullYear()) || (y===hoy.getFullYear() && m<hoy.getMonth()); }
+
+function categoriasParaMes(mesDataObj, y, m) {
+  if (esPasado(y,m) && mesDataObj.categoriasSnapshot && mesDataObj.categoriasSnapshot.length) {
+    return mesDataObj.categoriasSnapshot;
+  }
+  return categoriasLive;
+}
 
 function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 function setSyncStatus(msg,cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
 function mesKey(y,m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
 
-function calcPresupuesto(mesDataObj) {
+function calcPresupuesto(mesDataObj, y, m) {
   const d = mesDataObj || {};
   let total = 0;
-  CATS_DEF.forEach(cat => {
-    cat.conceptos.forEach(con => {
+  categoriasParaMes(d,y,m).forEach(cat => {
+    conceptosDe(cat.key).forEach(con => {
       total += d.overrides?.[cat.key]?.[con.id] ?? con.monto;
     });
     (d.custom||[]).filter(s=>s.catKey===cat.key).forEach(s => {
@@ -170,7 +189,7 @@ function calcPresupuesto(mesDataObj) {
 function calcPresupuestoCat(cat, mesDataObj) {
   const d = mesDataObj || {};
   let total = 0;
-  cat.conceptos.forEach(con => { total += d.overrides?.[cat.key]?.[con.id] ?? con.monto; });
+  conceptosDe(cat.key).forEach(con => { total += d.overrides?.[cat.key]?.[con.id] ?? con.monto; });
   (d.custom||[]).filter(s=>s.catKey===cat.key).forEach(s => { total += d.overrides?.[s.catKey]?.[s.id] ?? s.monto; });
   return total;
 }
@@ -196,13 +215,17 @@ async function render() {
   setSyncStatus('Cargando…');
   document.getElementById('mes-label').textContent = MESES[mesIdx]+' '+anio;
 
+  await cargarCategoriasLive();
+
   const [mesData, { porCat, total: totalReal }] = await Promise.all([
     cargarMes(anio, mesIdx),
     cargarGastos(anio, mesIdx)
   ]);
 
+  const catsActuales = categoriasParaMes(mesData, anio, mesIdx);
+
   const ing = (mesData.ingresos || BASE_INGRESOS);
-  const totalPresup = calcPresupuesto(mesData);
+  const totalPresup = calcPresupuesto(mesData, anio, mesIdx);
   const balPresup = ing - totalPresup;
   const balReal   = ing - totalReal;
   const diff      = totalReal - totalPresup;
@@ -232,15 +255,15 @@ async function render() {
   // --- Alertas ---
   const alertasEl = document.getElementById('alertas');
   const alertas = [];
-  CATS_DEF.forEach(cat => {
+  catsActuales.forEach(cat => {
     const presup = calcPresupuestoCat(cat, mesData);
     const real   = porCat[cat.key] || 0;
     if (presup === 0 && real === 0) return;
     const pct = presup > 0 ? real/presup : null;
     if (pct !== null && pct > 1)
-      alertas.push({ tipo:'danger', msg:`${CAT_LABELS[cat.key]}: ${fmt(real)} gastado vs ${fmt(presup)} presupuestado (+${((pct-1)*100).toFixed(0)}% sobre presupuesto)` });
+      alertas.push({ tipo:'danger', msg:`${cat.label}: ${fmt(real)} gastado vs ${fmt(presup)} presupuestado (+${((pct-1)*100).toFixed(0)}% sobre presupuesto)` });
     else if (pct !== null && pct > 0.85)
-      alertas.push({ tipo:'warn', msg:`${CAT_LABELS[cat.key]}: ${fmt(real)} de ${fmt(presup)} — ${(pct*100).toFixed(0)}% usado, cerca del límite` });
+      alertas.push({ tipo:'warn', msg:`${cat.label}: ${fmt(real)} de ${fmt(presup)} — ${(pct*100).toFixed(0)}% usado, cerca del límite` });
   });
   if (balReal < 0)
     alertas.unshift({ tipo:'danger', msg:`Déficit real de ${fmt(Math.abs(balReal))} este mes` });
@@ -251,7 +274,7 @@ async function render() {
   alertasEl.innerHTML = alertas.map(a=>`<div class="alerta ${a.tipo}">${a.msg}</div>`).join('');
 
   // --- Por categoría (barras verticales agrupadas) ---
-  const catsConDatos = CATS_DEF.filter(cat => calcPresupuestoCat(cat,mesData) > 0 || (porCat[cat.key]||0) > 0);
+  const catsConDatos = catsActuales.filter(cat => calcPresupuestoCat(cat,mesData) > 0 || (porCat[cat.key]||0) > 0);
   const maxCatVal = Math.max(...catsConDatos.flatMap(cat => [calcPresupuestoCat(cat,mesData), porCat[cat.key]||0]), 1);
   const svgCat = document.getElementById('chart-cat');
   const CW=600, CH=200, cpadL=55, cpadR=10, cpadT=10, cpadB=50;
@@ -285,7 +308,7 @@ async function render() {
     svgContent += `<rect x="${xR.toFixed(1)}" y="${(cpadT+chartCH-hR).toFixed(1)}" width="${barW}" height="${hR.toFixed(1)}" fill="${colorR}" rx="2"/>`;
 
     // Etiqueta abajo — abreviada
-    const label = CAT_LABELS[cat.key].split(' ')[0].slice(0,8);
+    const label = cat.label.split(' ')[0].slice(0,8);
     svgContent += `<text x="${cx.toFixed(1)}" y="${(cpadT+chartCH+12).toFixed(1)}" text-anchor="middle" font-size="8" fill="#666">${label}</text>`;
 
     // Valor real encima de barra real (si tiene datos)
@@ -308,7 +331,7 @@ async function render() {
   }
   const datos6 = await Promise.all(meses6.map(async ({m,y}) => {
     const [md, {total:tr}] = await Promise.all([cargarMes(y,m), cargarGastos(y,m)]);
-    return { label:MESES[m].slice(0,3), ing:md.ingresos||BASE_INGRESOS, presup:calcPresupuesto(md), real:tr };
+    return { label:MESES[m].slice(0,3), ing:md.ingresos||BASE_INGRESOS, presup:calcPresupuesto(md,y,m), real:tr };
   }));
 
   const svg = document.getElementById('chart-svg');
