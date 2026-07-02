@@ -7,7 +7,7 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:1.2rem; min-height:100vh; color:#e0e0e0; }
-.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:8px; flex-wrap:wrap; }
 .titulo { font-size:0.95rem; font-weight:600; color:#e0e0e0; }
 .mes-nav { display:flex; align-items:center; gap:6px; }
 .btn-mes { background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; color:#e0e0e0; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
@@ -16,6 +16,8 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .sync-status { font-size:0.65rem; color:#555; text-align:right; margin-bottom:0.5rem; }
 .sync-status.ok { color:#4caf82; }
 .sync-status.err { color:#e07070; }
+.aviso-pasado { font-size:0.68rem; color:#a0a0f0; background:#1e1e2e; border-radius:8px; padding:0.5rem 0.8rem; margin-bottom:0.6rem; display:none; }
+.aviso-pasado.show { display:block; }
 .card { background:#242424; border-radius:12px; padding:0.9rem 1rem; }
 .card-label { font-size:0.67rem; color:#777; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
 .card-valor { font-size:1.1rem; font-weight:600; }
@@ -24,7 +26,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .card-valor.pos { color:#4caf82; }
 .card-valor.neg { color:#e07070; }
 .card-pct { font-size:0.68rem; color:#777; margin-top:2px; }
-.seccion-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:0.8rem 0 0.5rem; }
+.seccion-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:0.8rem 0 0.5rem; display:flex; align-items:center; justify-content:space-between; }
 .cat-bloque { background:#242424; border-radius:10px; margin-bottom:6px; overflow:hidden; }
 .cat-header { display:flex; align-items:center; gap:8px; padding:0.6rem 0.9rem; cursor:pointer; user-select:none; }
 .cat-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
@@ -69,6 +71,15 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .sel-nueva { appearance:none; cursor:pointer; }
 .btn-nueva { width:100%; background:#2d2d6e; border:none; border-radius:8px; color:#fff; font-size:0.85rem; font-weight:600; padding:0.5rem; cursor:pointer; transition:background 0.2s; }
 .btn-nueva:hover { background:#3d3d9e; }
+.btn-cats { background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; color:#e0e0e0; font-size:0.75rem; padding:5px 10px; cursor:pointer; }
+.btn-cats:hover { background:#3a3a3a; }
+.panel-cats { display:none; margin-bottom:1rem; background:#242424; border-radius:10px; padding:0.8rem 0.9rem; }
+.panel-cats.open { display:block; }
+.cat-admin-row { display:flex; align-items:center; gap:8px; padding:0.4rem 0; border-bottom:1px solid #2a2a2a; }
+.cat-admin-row:last-child { border-bottom:none; }
+.cat-admin-color { width:30px; height:30px; border:none; border-radius:7px; background:none; cursor:pointer; padding:0; flex-shrink:0; }
+.cat-admin-label { flex:1; background:#2a2a2a; border:1px solid #3a3a3a; border-radius:7px; padding:5px 8px; color:#e8e8e8; font-size:0.8rem; font-family:inherit; outline:none; }
+.cat-admin-label:focus { border-color:#a0a0f0; }
 </style>
 </head>
 <body>
@@ -76,13 +87,30 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
   <div class="header">
     <div class="titulo"></div>
-    <div class="mes-nav">
-      <button class="btn-mes" id="btn-prev">‹</button>
-      <div class="mes-actual" id="mes-label"></div>
-      <button class="btn-mes" id="btn-next">›</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="btn-cats" id="btn-cats">⚙ Categorías</button>
+      <div class="mes-nav">
+        <button class="btn-mes" id="btn-prev">‹</button>
+        <div class="mes-actual" id="mes-label"></div>
+        <button class="btn-mes" id="btn-next">›</button>
+      </div>
     </div>
   </div>
   <div class="sync-status" id="sync-status">Conectando…</div>
+  <div class="aviso-pasado" id="aviso-pasado">📌 Estás viendo un mes cerrado — muestra las categorías tal como estaban en ese momento, aunque hayas editado o eliminado categorías después.</div>
+
+  <div class="panel-cats" id="panel-cats">
+    <div class="seccion-titulo">Gestionar categorías</div>
+    <div id="lista-cats-admin"></div>
+    <div class="nueva-sub" style="margin-top:0.6rem">
+      <div class="nueva-sub-titulo">+ Nueva categoría</div>
+      <div class="nueva-sub-campos">
+        <input class="inp-nueva nueva-sub-full" id="nc-label" placeholder="Nombre de la categoría"/>
+        <input class="inp-nueva" id="nc-color" type="color" value="#a0a0f0" style="height:38px;padding:2px;cursor:pointer;"/>
+      </div>
+      <button class="btn-nueva" id="btn-nueva-cat">Agregar categoría</button>
+    </div>
+  </div>
 
   <div class="seccion-titulo">Presupuesto por categoría — clic para ver y editar</div>
   <div id="categorias"></div>
@@ -91,15 +119,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
     <div class="nueva-sub-titulo">+ Agregar subcategoría</div>
     <div class="nueva-sub-campos">
       <input class="inp-nueva nueva-sub-full" id="ns-label" placeholder="Nombre de la subcategoría"/>
-      <select class="inp-nueva sel-nueva" id="ns-cat">
-        <option value="deudas">Créditos y deudas</option>
-        <option value="hogar">Hogar y servicios</option>
-        <option value="mascotas">Mascotas</option>
-        <option value="transporte">Transporte</option>
-        <option value="salud">Salud</option>
-        <option value="suscripciones">Suscripciones digitales</option>
-        <option value="variables">Variables / Alimentación</option>
-      </select>
+      <select class="inp-nueva sel-nueva" id="ns-cat"></select>
       <input class="inp-nueva" id="ns-monto" placeholder="$ Monto base" type="number" min="0"/>
       <input class="inp-nueva" id="ns-nota" placeholder="Nota (opcional)"/>
     </div>
@@ -109,7 +129,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -120,22 +140,23 @@ const firebaseConfig = {
   appId: "1:1062344169400:web:75075634e2d4a416b3614d"
 };
 
-const app      = initializeApp(firebaseConfig);
-const db       = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const BASE_INGRESOS = 2000000;
 
-const CATS_DEF = [
-  { key:'deudas', label:'Créditos y deudas', color:'#e07070', conceptos:[
+// Conceptos presupuestados fijos por categoría (el nombre/color de la categoría en sí ahora vive en Firestore, colección "categorias")
+const CONCEPTOS_DEF = {
+  deudas: [
     { id:'banco_chile',   label:'Cuota Banco Chile',        monto:130885, nota:'Cuota 20+/60 — termina ~2029' },
     { id:'banco_estado',  label:'Cuota Banco Estado',       monto:287581, nota:'Cuota 26+/48 — termina ~2027' },
     { id:'caja_andes',    label:'Caja los Andes',           monto:240986, nota:'Cuota 8/12 — termina Oct 2025' },
     { id:'cae',           label:'CAE (TGR)',                 monto:0,      nota:'Ingresar cuando se regularice' },
     { id:'cencosud',      label:'Cencosud (en mora)',        monto:0,      nota:'Ingresar cuando se regularice' },
     { id:'falabella',     label:'Falabella/CMR (en mora)',   monto:0,      nota:'Ingresar cuando se regularice' },
-  ]},
-  { key:'hogar', label:'Hogar y servicios', color:'#7ab8f5', conceptos:[
+  ],
+  hogar: [
     { id:'arriendo',      label:'Arriendo propio',           monto:100000, nota:'' },
     { id:'arriendo_mama', label:'Arriendo mamá',             monto:0,      nota:'Solo meses que corresponde' },
     { id:'luz',           label:'Luz',                       monto:35000,  nota:'' },
@@ -144,25 +165,25 @@ const CATS_DEF = [
     { id:'internet',      label:'Internet',                  monto:15378,  nota:'' },
     { id:'telefono',      label:'Teléfono',                  monto:25262,  nota:'' },
     { id:'wom',           label:'Wom (cuotas)',              monto:0,      nota:'Ingresar si hay cuota' },
-  ]},
-  { key:'mascotas', label:'Mascotas', color:'#c3b1e1', conceptos:[
+  ],
+  mascotas: [
     { id:'sitter',        label:'Sitter',                    monto:250000, nota:'Necesario para trabajar' },
     { id:'comida_perros', label:'Comida perros',             monto:110000, nota:'' },
     { id:'comida_gatos',  label:'Comida gatos',              monto:55000,  nota:'' },
     { id:'arena',         label:'Arena felinos',             monto:76000,  nota:'' },
     { id:'vet',           label:'Veterinaria',               monto:0,      nota:'Solo si hay' },
-  ]},
-  { key:'transporte', label:'Transporte', color:'#ffd166', conceptos:[
+  ],
+  transporte: [
     { id:'bus',           label:'Pasajes bus Viña-Stgo',     monto:244000, nota:'Necesario para trabajar' },
     { id:'metro',         label:'Metro / micro local',       monto:0,      nota:'' },
     { id:'uber',          label:'Uber (puntual)',             monto:0,      nota:'' },
-  ]},
-  { key:'salud', label:'Salud', color:'#f7c59f', conceptos:[
+  ],
+  salud: [
     { id:'remedios',      label:'Remedios (venlafaxina)',    monto:12000,  nota:'' },
     { id:'psicologa',     label:'Psicóloga',                monto:0,      nota:'Solo meses que corresponde' },
     { id:'otros_salud',   label:'Otros salud',               monto:0,      nota:'' },
-  ]},
-  { key:'suscripciones', label:'Suscripciones digitales', color:'#90e0ef', conceptos:[
+  ],
+  suscripciones: [
     { id:'claude',        label:'Claude (IA)',               monto:21182,  nota:'' },
     { id:'spotify',       label:'Spotify',                   monto:6750,   nota:'' },
     { id:'mercadopago',   label:'MercadoPago',               monto:9990,   nota:'' },
@@ -170,46 +191,95 @@ const CATS_DEF = [
     { id:'crunchyroll',   label:'Crunchyroll',              monto:3990,   nota:'' },
     { id:'bluehosting',   label:'Bluehosting',              monto:7140,   nota:'' },
     { id:'playstation',   label:'PlayStation',              monto:14441,  nota:'' },
-  ]},
-  { key:'variables', label:'Variables / Alimentación', color:'#b5ead7', conceptos:[
+  ],
+  variables: [
     { id:'mercaderia',    label:'Mercadería',                monto:0,      nota:'Completar al mes' },
     { id:'feria',         label:'Feria / carnicería',        monto:0,      nota:'' },
     { id:'delivery',      label:'Comida fuera / delivery',   monto:0,      nota:'' },
     { id:'almuerzo',      label:'Almuerzo trabajo',          monto:0,      nota:'' },
     { id:'varios',        label:'Gastos varios',             monto:0,      nota:'' },
     { id:'piscina',       label:'Piscina Maxi',              monto:98000,  nota:'Solo temporada' },
-  ]},
+  ],
+};
+
+const DEFAULT_CATS = [
+  {key:'deudas', label:'Créditos y deudas', color:'#e07070', orden:0},
+  {key:'hogar', label:'Hogar y servicios', color:'#7ab8f5', orden:1},
+  {key:'mascotas', label:'Mascotas', color:'#c3b1e1', orden:2},
+  {key:'transporte', label:'Transporte', color:'#ffd166', orden:3},
+  {key:'salud', label:'Salud', color:'#f7c59f', orden:4},
+  {key:'suscripciones', label:'Suscripciones digitales', color:'#90e0ef', orden:5},
+  {key:'variables', label:'Variables / Alimentación', color:'#b5ead7', orden:6},
 ];
+
+let categoriasLive = []; // [{id, key, label, color, orden}] — estado vigente en Firestore
 
 const hoy = new Date();
 let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
-let mesData = { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[] };
+let mesData = { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
 
 function claveDoc()  { return `presupuesto_${anio}_${mesIdx}`; }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
+
+function esMesPasado() {
+  return (anio < hoy.getFullYear()) || (anio===hoy.getFullYear() && mesIdx < hoy.getMonth());
+}
+
+// Categorías a usar para renderizar: si el mes ya pasó y quedó "congelado" con su propia lista, se usa esa.
+// Si es el mes actual o uno futuro, siempre se usa la lista vigente de Firestore (para que crear/editar/eliminar
+// categorías se refleje de inmediato).
+function categoriasParaRender() {
+  if (esMesPasado() && mesData.categoriasSnapshot && mesData.categoriasSnapshot.length) {
+    return mesData.categoriasSnapshot;
+  }
+  return categoriasLive;
+}
+
+async function seedCategoriasSiVacio() {
+  const snap = await getDocs(collection(db,'categorias'));
+  if (snap.empty) {
+    for (const c of DEFAULT_CATS) { await addDoc(collection(db,'categorias'), c); }
+  }
+}
+
+function suscribirCategorias(cb) {
+  const q = query(collection(db,'categorias'), orderBy('orden','asc'));
+  onSnapshot(q, snap => {
+    categoriasLive = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    cb && cb();
+  });
+}
 
 async function cargarMes() {
   try {
     const snap = await getDoc(doc(db,'finanzas',claveDoc()));
     mesData = snap.exists()
-      ? { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], ...snap.data() }
-      : { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[] };
+      ? { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null, ...snap.data() }
+      : { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
     setSyncStatus('✓ Sincronizado','ok');
   } catch(e) { setSyncStatus('Sin conexión','err'); }
+  document.getElementById('aviso-pasado').classList.toggle('show', esMesPasado());
 }
 
 async function guardarMes() {
-  try { await setDoc(doc(db,'finanzas',claveDoc()), mesData); setSyncStatus('✓ Guardado','ok'); }
-  catch(e) { setSyncStatus('Error al guardar','err'); }
+  try {
+    // Mientras el mes es actual o futuro, cada guardado congela la lista de categorías vigente en ese momento.
+    // Así, cuando el mes quede en el pasado, conserva las categorías tal como estaban en su último guardado.
+    if (!esMesPasado()) {
+      mesData.categoriasSnapshot = categoriasLive.map(c=>({key:c.key,label:c.label,color:c.color}));
+    }
+    await setDoc(doc(db,'finanzas',claveDoc()), mesData);
+    setSyncStatus('✓ Guardado','ok');
+  } catch(e) { setSyncStatus('Error al guardar','err'); }
 }
 
-function montoBase(catKey,id) { return CATS_DEF.find(c=>c.key===catKey)?.conceptos.find(c=>c.id===id)?.monto??0; }
+function conceptosDe(catKey) { return CONCEPTOS_DEF[catKey] || []; }
+function montoBase(catKey,id) { return conceptosDe(catKey).find(c=>c.id===id)?.monto??0; }
 function getMonto(catKey,id)  { return mesData.overrides?.[catKey]?.[id]??montoBase(catKey,id); }
 function getMontoCustom(sub)  { return mesData.overrides?.[sub.catKey]?.[sub.id]??sub.monto; }
 function getTotalCat(catKey) {
-  const cat=CATS_DEF.find(c=>c.key===catKey);
-  return cat.conceptos.reduce((a,c)=>a+getMonto(catKey,c.id),0)+(mesData.custom||[]).filter(s=>s.catKey===catKey).reduce((a,s)=>a+getMontoCustom(s),0);
+  return conceptosDe(catKey).reduce((a,c)=>a+getMonto(catKey,c.id),0)+(mesData.custom||[]).filter(s=>s.catKey===catKey).reduce((a,s)=>a+getMontoCustom(s),0);
 }
 function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 
@@ -249,16 +319,74 @@ function crearInputMonto(val,base,catKey,id) {
   return inp;
 }
 
+function poblarSelectCategorias() {
+  const sel = document.getElementById('ns-cat');
+  const actual = sel.value;
+  sel.innerHTML = categoriasLive.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+  if ([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+}
+
+async function contarMesesConCategoria(catKey) {
+  try {
+    const snap = await getDocs(collection(db,'finanzas'));
+    let n = 0;
+    snap.forEach(d=>{
+      const data = d.data();
+      const tieneOverride = data.overrides && data.overrides[catKey] && Object.keys(data.overrides[catKey]).length;
+      const tieneCustom = (data.custom||[]).some(s=>s.catKey===catKey);
+      const enSnapshot = (data.categoriasSnapshot||[]).some(c=>c.key===catKey);
+      if (tieneOverride || tieneCustom || enSnapshot) n++;
+    });
+    return n;
+  } catch(e) { return 0; }
+}
+
+function renderPanelCats() {
+  const cont = document.getElementById('lista-cats-admin');
+  cont.innerHTML = '';
+  categoriasLive.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'cat-admin-row';
+    const colorInp = document.createElement('input');
+    colorInp.type='color'; colorInp.className='cat-admin-color'; colorInp.value=cat.color;
+    const labelInp = document.createElement('input');
+    labelInp.type='text'; labelInp.className='cat-admin-label'; labelInp.value=cat.label;
+    const btnSave = document.createElement('button');
+    btnSave.className='btn-edit-ok'; btnSave.textContent='Guardar';
+    const btnDel = document.createElement('button');
+    btnDel.className='btn-del-sub'; btnDel.textContent='×';
+
+    btnSave.addEventListener('click', async ()=>{
+      const label = labelInp.value.trim();
+      if(!label){ alert('El nombre no puede quedar vacío'); return; }
+      await updateDoc(doc(db,'categorias',cat.id), { label, color: colorInp.value });
+    });
+    btnDel.addEventListener('click', async ()=>{
+      const nMeses = await contarMesesConCategoria(cat.key);
+      const msg = nMeses > 0
+        ? `"${cat.label}" tiene datos guardados en ${nMeses} mes(es). Esos meses van a seguir mostrando esta categoría tal como está ahora — no se borra nada. Solo deja de estar disponible desde el mes actual en adelante. ¿Eliminar igual?`
+        : `¿Eliminar la categoría "${cat.label}"? No tiene datos guardados en ningún mes.`;
+      if(!confirm(msg)) return;
+      await deleteDoc(doc(db,'categorias',cat.id));
+    });
+
+    row.appendChild(colorInp); row.appendChild(labelInp); row.appendChild(btnSave); row.appendChild(btnDel);
+    cont.appendChild(row);
+  });
+}
+
 function render() {
   document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio;
+  document.getElementById('aviso-pasado').classList.toggle('show', esMesPasado());
   const cont=document.getElementById('categorias'); cont.innerHTML='';
-  CATS_DEF.forEach(cat=>{
+  const cats = categoriasParaRender();
+  cats.forEach(cat=>{
     const bloque=document.createElement('div'); bloque.className='cat-bloque';
     const header=document.createElement('div'); header.className='cat-header';
     header.innerHTML=`<div class="cat-dot" style="background:${cat.color}"></div><div class="cat-nombre">${cat.label}</div><div class="cat-monto" id="total-${cat.key}">${fmt(getTotalCat(cat.key))}</div><div class="cat-arrow">▶</div>`;
     const detalle=document.createElement('div'); detalle.className='cat-detalle';
 
-    cat.conceptos.forEach(con=>{
+    conceptosDe(cat.key).forEach(con=>{
       const val=getMonto(cat.key,con.id), base=montoBase(cat.key,con.id);
       const estaOculto=mesData.ocultos?.includes(con.id);
       const labelGuardado=mesData.labels?.[con.id]?.label||con.label;
@@ -333,14 +461,35 @@ function render() {
 
 async function init() {
   setSyncStatus('Cargando…');
+  await seedCategoriasSiVacio();
+  suscribirCategorias(()=>{
+    poblarSelectCategorias();
+    if (document.getElementById('panel-cats').classList.contains('open')) renderPanelCats();
+    render();
+  });
   await cargarMes();
   render();
 }
 
+document.getElementById('btn-prev').addEventListener('click', async()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} await cargarMes(); render(); });
+document.getElementById('btn-next').addEventListener('click', async()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} await cargarMes(); render(); });
 
+document.getElementById('btn-cats').addEventListener('click', ()=>{
+  const panel = document.getElementById('panel-cats');
+  const abrir = !panel.classList.contains('open');
+  panel.classList.toggle('open', abrir);
+  if(abrir) renderPanelCats();
+});
 
-document.getElementById('btn-prev').addEventListener('click', async()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} await init(); });
-document.getElementById('btn-next').addEventListener('click', async()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} await init(); });
+document.getElementById('btn-nueva-cat').addEventListener('click', async ()=>{
+  const label = document.getElementById('nc-label').value.trim();
+  const color = document.getElementById('nc-color').value;
+  if(!label){ alert('Ingresa un nombre'); return; }
+  const key = 'cat_' + label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') + '_' + Date.now().toString(36);
+  const orden = categoriasLive.length;
+  await addDoc(collection(db,'categorias'), {key, label, color, orden});
+  document.getElementById('nc-label').value='';
+});
 
 init();
 

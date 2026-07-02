@@ -70,37 +70,6 @@ select.inp { appearance:none; cursor:pointer; }
       <input class="inp" id="g-monto" type="number" min="0" placeholder="$ Monto"/>
       <select class="inp" id="g-cat">
         <option value="">— Categoría —</option>
-        <option value="deudas">Créditos y deudas</option>
-        <option value="hogar">Hogar y servicios</option>
-        <option value="mascotas">Mascotas</option>
-        <option value="transporte">Transporte</option>
-        <option value="salud">Salud</option>
-        <option value="suscripciones">Suscripciones digitales</option>
-        <option value="variables">Variables / Alimentación</option>
-      </select>
-      <select class="inp" id="g-subcat">
-        <option value="">— Subcategoría —</option>
-        <option>Alimentación</option>
-        <option>Transporte — Micro</option>
-        <option>Transporte — Uber</option>
-        <option>Transporte — Auto</option>
-        <option>Transporte — Cuponera</option>
-        <option>Transporte — BIP</option>
-        <option>Snack</option>
-        <option>Snack Maxi</option>
-        <option>Piscina Maxi</option>
-        <option>Suscripción</option>
-        <option>Hogar</option>
-        <option>Ropa</option>
-        <option>Medicamento</option>
-        <option>Veterinario</option>
-        <option>Cuidadora</option>
-        <option>Comida</option>
-        <option>Salud</option>
-        <option>Arriendo</option>
-        <option>Servicios</option>
-        <option>Entretenimiento</option>
-        <option>Otro</option>
       </select>
       <select class="inp" id="g-metodo">
         <option value="Débito">Débito</option>
@@ -143,8 +112,28 @@ const app      = initializeApp(firebaseConfig);
 const db       = getFirestore(app);
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const CAT_COLORS = { deudas:'#e07070', hogar:'#7ab8f5', mascotas:'#c3b1e1', transporte:'#ffd166', salud:'#f7c59f', suscripciones:'#90e0ef', variables:'#b5ead7' };
-const CAT_LABELS = { deudas:'Créditos y deudas', hogar:'Hogar y servicios', mascotas:'Mascotas', transporte:'Transporte', salud:'Salud', suscripciones:'Suscripciones', variables:'Variables' };
+
+// Las categorías ahora viven en Firestore (colección "categorias", compartida con finanzas.html) y llegan en vivo.
+// Cada gasto guarda su propio catLabel/catColor al crearse, así que un gasto viejo nunca cambia de aspecto
+// aunque la categoría se edite o elimine después — solo cambia el selector para gastos nuevos.
+let categoriasLive = [];
+
+function suscribirCategorias() {
+  const q = query(collection(db,'categorias'), orderBy('orden','asc'));
+  onSnapshot(q, snap => {
+    categoriasLive = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    poblarSelectCategorias();
+  });
+}
+
+function poblarSelectCategorias() {
+  const sel = document.getElementById('g-cat');
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">— Categoría —</option>' + categoriasLive.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+  if ([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+}
+
+function catInfo(catKey) { return categoriasLive.find(c=>c.key===catKey); }
 
 const hoy = new Date();
 let mesIdx = hoy.getMonth();
@@ -165,8 +154,11 @@ function renderResumen() {
   const sumCont=document.getElementById('cat-summary');
   sumCont.innerHTML='';
   Object.entries(porCat).sort((a,b)=>b[1]-a[1]).forEach(([key,val])=>{
+    const ejemplo=gastos.find(g=>g.catKey===key);
+    const color=ejemplo.catColor||catInfo(key)?.color||'#aaa';
+    const label=ejemplo.catLabel||catInfo(key)?.label||key;
     const row=document.createElement('div'); row.className='cat-row';
-    row.innerHTML=`<div class="cat-row-dot" style="background:${CAT_COLORS[key]||'#aaa'}"></div><div class="cat-row-name">${CAT_LABELS[key]||key}</div><div class="cat-row-barra-track"><div class="cat-row-barra-fill" style="width:${(val/maxVal*100).toFixed(0)}%;background:${CAT_COLORS[key]||'#aaa'}"></div></div><div class="cat-row-monto">${fmt(val)}</div>`;
+    row.innerHTML=`<div class="cat-row-dot" style="background:${color}"></div><div class="cat-row-name">${label}</div><div class="cat-row-barra-track"><div class="cat-row-barra-fill" style="width:${(val/maxVal*100).toFixed(0)}%;background:${color}"></div></div><div class="cat-row-monto">${fmt(val)}</div>`;
     sumCont.appendChild(row);
   });
   if(!Object.keys(porCat).length) sumCont.innerHTML='<div class="empty-state">Sin gastos este mes</div>';
@@ -177,8 +169,9 @@ function renderLista() {
   lista.innerHTML='';
   if(!gastos.length){ lista.innerHTML='<div class="empty-state">Sin gastos registrados este mes</div>'; return; }
   [...gastos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(g=>{
+    const color=g.catColor||catInfo(g.catKey)?.color||'#aaa';
     const item=document.createElement('div'); item.className='gasto-item';
-    item.innerHTML=`<div class="gasto-dot" style="background:${CAT_COLORS[g.catKey]||'#aaa'}"></div><div class="gasto-info"><div class="gasto-desc">${g.desc}</div><div class="gasto-meta">${g.fecha}${g.subcat?' · '+g.subcat:''} · ${g.metodo} · ${g.tipo}${g.notas?' · '+g.notas:''}</div></div><div class="gasto-monto">${fmt(g.monto)}</div><button class="btn-del-gasto" data-id="${g.fireId}">×</button>`;
+    item.innerHTML=`<div class="gasto-dot" style="background:${color}"></div><div class="gasto-info"><div class="gasto-desc">${g.desc}</div><div class="gasto-meta">${g.fecha} · ${g.metodo} · ${g.tipo}${g.notas?' · '+g.notas:''}</div></div><div class="gasto-monto">${fmt(g.monto)}</div><button class="btn-del-gasto" data-id="${g.fireId}">×</button>`;
     item.querySelector('.btn-del-gasto').addEventListener('click', async e=>{ e.stopPropagation(); if(!confirm('¿Eliminar este gasto?')) return; await deleteDoc(doc(db,'gastos',g.fireId)); });
     lista.appendChild(item);
   });
@@ -197,6 +190,7 @@ function suscribir() {
 
 document.getElementById('mes-label').textContent = MESES[mesIdx]+' '+anio;
 document.getElementById('g-fecha').value = new Date().toISOString().split('T')[0];
+suscribirCategorias();
 suscribir();
 
 document.getElementById('btn-prev').addEventListener('click', ()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio; suscribir(); });
@@ -206,20 +200,19 @@ document.getElementById('btn-agregar').addEventListener('click', async ()=>{
   const desc=document.getElementById('g-desc').value.trim();
   const monto=parseFloat(document.getElementById('g-monto').value)||0;
   const catKey=document.getElementById('g-cat').value;
-  const subcat=document.getElementById('g-subcat').value;
   const metodo=document.getElementById('g-metodo').value;
   const tipo=document.getElementById('g-tipo').value;
   const fecha=document.getElementById('g-fecha').value;
   const notas=document.getElementById('g-notas').value.trim();
   if(!desc||monto<=0||!catKey){ alert('Completa descripción, monto y categoría'); return; }
+  const catData = catInfo(catKey);
   const btn=document.getElementById('btn-agregar');
   btn.disabled=true; btn.textContent='Guardando…';
   try {
-    await addDoc(collection(db,'gastos'),{desc,monto,catKey,subcat,metodo,tipo,fecha,notas,mesKey:mesKey(),creadoEn:new Date().toISOString()});
+    await addDoc(collection(db,'gastos'),{desc,monto,catKey,catLabel:catData?.label||catKey,catColor:catData?.color||'#aaa',metodo,tipo,fecha,notas,mesKey:mesKey(),creadoEn:new Date().toISOString()});
     document.getElementById('g-desc').value='';
     document.getElementById('g-monto').value='';
     document.getElementById('g-cat').value='';
-    document.getElementById('g-subcat').value='';
     document.getElementById('g-notas').value='';
   } catch(e){ alert('Error al guardar: '+e.message); }
   btn.disabled=false; btn.textContent='Agregar gasto';
