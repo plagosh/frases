@@ -39,8 +39,11 @@
     letter-spacing: 0.1em;
     color: #555;
     text-transform: uppercase;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.4rem;
   }
+  .sync-status { font-size:0.65rem; color:#555; margin-bottom:0.8rem; }
+  .sync-status.ok { color:#4caf82; }
+  .sync-status.err { color:#e07070; }
   .toolbar {
     display: flex;
     align-items: center;
@@ -77,6 +80,7 @@
     flex-shrink: 0;
   }
   .btn-add:hover { background: #4a4a4a; }
+  .btn-add:disabled { background:#2a2a2a; color:#555; cursor:not-allowed; }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -137,6 +141,7 @@
 <div class="particles" id="particles"></div>
 <div class="contenido">
   <div class="estacion-label" id="estacion"></div>
+  <div class="sync-status" id="sync-status">Conectando…</div>
   <div class="toolbar">
     <input type="text" class="input-nota" id="input" placeholder="Escribe una nota rápida..."/>
     <button class="btn-add" id="btnAdd">+</button>
@@ -144,7 +149,24 @@
   <div class="grid" id="grid"></div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
+  authDomain: "finanzas-personal-12490.firebaseapp.com",
+  projectId: "finanzas-personal-12490",
+  storageBucket: "finanzas-personal-12490.firebasestorage.app",
+  messagingSenderId: "1062344169400",
+  appId: "1:1062344169400:web:75075634e2d4a416b3614d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
+
 const colores = [
   '#ffd166','#ffa07a','#98d8c8','#c3b1e1',
   '#a8d8ea','#f7c59f','#b5ead7','#ffc8dd',
@@ -182,11 +204,10 @@ for (let i = 0; i < cfg.count; i++) {
   pContainer.appendChild(el);
 }
 
-// Notas
+// Notas — ahora en Firestore (colección "notas"), sincronizadas entre dispositivos
 let notas = [];
-try { const s = localStorage.getItem('notas_rapidas'); if(s) notas = JSON.parse(s); } catch(e){}
+const debounceTimers = {};
 
-function guardar() { try { localStorage.setItem('notas_rapidas', JSON.stringify(notas)); } catch(e){} }
 function colorPorIndice(i) { return colores[i % colores.length]; }
 
 function render() {
@@ -204,7 +225,14 @@ function render() {
     const textarea = document.createElement('textarea');
     textarea.className = 'nota-texto';
     textarea.value = nota.texto;
-    textarea.addEventListener('input', () => { notas[i].texto = textarea.value; guardar(); });
+    textarea.addEventListener('input', () => {
+      const texto = textarea.value;
+      clearTimeout(debounceTimers[nota.fireId]);
+      debounceTimers[nota.fireId] = setTimeout(async () => {
+        try { await updateDoc(doc(db, 'notas', nota.fireId), { texto }); }
+        catch (e) { setSyncStatus('Error al guardar: ' + e.message, 'err'); }
+      }, 500);
+    });
 
     const footer = document.createElement('div');
     footer.className = 'nota-footer';
@@ -216,7 +244,10 @@ function render() {
     const btnDel = document.createElement('button');
     btnDel.className = 'btn-delete';
     btnDel.textContent = '×';
-    btnDel.addEventListener('click', () => { notas.splice(i, 1); guardar(); render(); });
+    btnDel.addEventListener('click', async () => {
+      try { await deleteDoc(doc(db, 'notas', nota.fireId)); }
+      catch (e) { setSyncStatus('Error al eliminar: ' + e.message, 'err'); }
+    });
 
     footer.appendChild(fecha);
     footer.appendChild(btnDel);
@@ -226,15 +257,34 @@ function render() {
   });
 }
 
-function agregarNota() {
+function suscribir() {
+  setSyncStatus('Cargando…');
+  try {
+    const q = query(collection(db, 'notas'), orderBy('creadoEn', 'desc'));
+    onSnapshot(q, snap => {
+      notas = snap.docs.map(d => ({ fireId: d.id, ...d.data() }));
+      setSyncStatus('✓ En vivo', 'ok');
+      render();
+    }, err => setSyncStatus('Error de conexión: ' + err.message, 'err'));
+  } catch (e) { setSyncStatus('Error: ' + e.message, 'err'); }
+}
+
+async function agregarNota() {
   const input = document.getElementById('input');
   const texto = input.value.trim();
   if (!texto) return;
   const hoy = new Date();
   const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
-  notas.unshift({ texto, fecha: `${dias[hoy.getDay()]} ${hoy.getDate()}/${hoy.getMonth()+1}` });
-  guardar(); render();
-  input.value = '';
+  const fecha = `${dias[hoy.getDay()]} ${hoy.getDate()}/${hoy.getMonth()+1}`;
+  const btn = document.getElementById('btnAdd');
+  btn.disabled = true;
+  try {
+    await addDoc(collection(db, 'notas'), { texto, fecha, creadoEn: new Date().toISOString() });
+    input.value = '';
+  } catch (e) {
+    setSyncStatus('Error al guardar: ' + e.message, 'err');
+  }
+  btn.disabled = false;
 }
 
 document.getElementById('btnAdd').addEventListener('click', agregarNota);
@@ -242,7 +292,7 @@ document.getElementById('input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); agregarNota(); }
 });
 
-render();
+suscribir();
 </script>
 </body>
 </html>
