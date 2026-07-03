@@ -40,6 +40,15 @@ select.inp { appearance:none; cursor:pointer; }
 .gasto-monto { font-size:0.85rem; font-weight:600; color:#e07070; flex-shrink:0; }
 .btn-del-gasto { background:none; border:none; color:#333; font-size:1rem; cursor:pointer; flex-shrink:0; transition:color 0.2s; }
 .btn-del-gasto:hover { color:#e07070; }
+.btn-edit-gasto { background:none; border:none; color:#333; font-size:0.9rem; cursor:pointer; flex-shrink:0; transition:color 0.2s; }
+.btn-edit-gasto:hover { color:#a0a0f0; }
+.gasto-edit-form { background:#242424; border-radius:10px; padding:0.7rem 0.9rem; display:flex; flex-direction:column; gap:6px; }
+.gasto-edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.gasto-edit-actions { display:flex; gap:6px; }
+.btn-guardar-edit { flex:1; background:#2d2d6e; border:none; border-radius:8px; color:#fff; font-size:0.8rem; font-weight:600; padding:0.4rem; cursor:pointer; }
+.btn-guardar-edit:hover { background:#3d3d9e; }
+.btn-cancelar-edit { flex:1; background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; color:#aaa; font-size:0.8rem; padding:0.4rem; cursor:pointer; }
+.btn-cancelar-edit:hover { background:#3a3a3a; }
 .empty-state { text-align:center; color:#444; font-size:0.82rem; padding:2rem 0; }
 .cat-summary { display:flex; flex-direction:column; gap:4px; margin-bottom:1rem; }
 .cat-row { display:flex; align-items:center; gap:8px; background:#242424; border-radius:8px; padding:0.5rem 0.8rem; }
@@ -97,7 +106,7 @@ select.inp { appearance:none; cursor:pointer; }
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -140,8 +149,10 @@ let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
 let gastos = [];
 let unsubscribe = null;
+let editandoId = null;
 
 function mesKey() { return `${anio}-${String(mesIdx+1).padStart(2,'0')}`; }
+function mesKeyDeFecha(fechaStr) { const [y,m]=fechaStr.split('-'); return `${y}-${m}`; }
 function fmt(n)   { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
 
@@ -164,14 +175,72 @@ function renderResumen() {
   if(!Object.keys(porCat).length) sumCont.innerHTML='<div class="empty-state">Sin gastos este mes</div>';
 }
 
+function opcionesCategoria(selKey) {
+  return categoriasLive.map(c=>`<option value="${c.key}" ${c.key===selKey?'selected':''}>${c.label}</option>`).join('');
+}
+
+function renderFormEdit(g) {
+  const wrap=document.createElement('div'); wrap.className='gasto-edit-form';
+  wrap.innerHTML=`
+    <input class="inp" data-f="desc" value="${g.desc.replace(/"/g,'&quot;')}" placeholder="Descripción"/>
+    <div class="gasto-edit-grid">
+      <input class="inp" data-f="monto" type="number" min="0" value="${g.monto}"/>
+      <select class="inp" data-f="catKey">${opcionesCategoria(g.catKey)}</select>
+      <select class="inp" data-f="metodo">
+        ${['Débito','Efectivo','Crédito','Transferencia','App'].map(m=>`<option ${m===g.metodo?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <select class="inp" data-f="tipo">
+        ${['Variable','Fijo'].map(t=>`<option ${t===g.tipo?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input class="inp" data-f="fecha" type="date" value="${g.fecha}"/>
+      <input class="inp" data-f="notas" value="${(g.notas||'').replace(/"/g,'&quot;')}" placeholder="Notas"/>
+    </div>
+    <div class="gasto-edit-actions">
+      <button class="btn-guardar-edit">Guardar</button>
+      <button class="btn-cancelar-edit">Cancelar</button>
+    </div>`;
+
+  wrap.querySelector('.btn-cancelar-edit').addEventListener('click', ()=>{ editandoId=null; renderLista(); });
+
+  wrap.querySelector('.btn-guardar-edit').addEventListener('click', async ()=>{
+    const val=f=>wrap.querySelector(`[data-f="${f}"]`).value;
+    const desc=val('desc').trim();
+    const monto=parseFloat(val('monto'))||0;
+    const catKey=val('catKey');
+    const fecha=val('fecha');
+    if(!desc||monto<=0||!catKey||!fecha){ alert('Completa descripción, monto, categoría y fecha'); return; }
+    const catData=catInfo(catKey);
+    const btn=wrap.querySelector('.btn-guardar-edit');
+    btn.disabled=true; btn.textContent='Guardando…';
+    try {
+      await updateDoc(doc(db,'gastos',g.fireId),{
+        desc, monto, catKey,
+        catLabel: catData?.label||catKey,
+        catColor: catData?.color||'#aaa',
+        metodo: val('metodo'),
+        tipo: val('tipo'),
+        fecha,
+        notas: val('notas').trim(),
+        mesKey: mesKeyDeFecha(fecha) // si cambias el mes de la fecha, el gasto se mueve de vista automáticamente
+      });
+      editandoId=null;
+      // si el nuevo mesKey ya no es el mes que estás viendo, el gasto desaparece de esta lista al re-suscribir
+    } catch(e){ alert('Error al guardar: '+e.message); btn.disabled=false; btn.textContent='Guardar'; }
+  });
+
+  return wrap;
+}
+
 function renderLista() {
   const lista=document.getElementById('lista-gastos');
   lista.innerHTML='';
   if(!gastos.length){ lista.innerHTML='<div class="empty-state">Sin gastos registrados este mes</div>'; return; }
   [...gastos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(g=>{
+    if(g.fireId===editandoId){ lista.appendChild(renderFormEdit(g)); return; }
     const color=g.catColor||catInfo(g.catKey)?.color||'#aaa';
     const item=document.createElement('div'); item.className='gasto-item';
-    item.innerHTML=`<div class="gasto-dot" style="background:${color}"></div><div class="gasto-info"><div class="gasto-desc">${g.desc}</div><div class="gasto-meta">${g.fecha} · ${g.metodo} · ${g.tipo}${g.notas?' · '+g.notas:''}</div></div><div class="gasto-monto">${fmt(g.monto)}</div><button class="btn-del-gasto" data-id="${g.fireId}">×</button>`;
+    item.innerHTML=`<div class="gasto-dot" style="background:${color}"></div><div class="gasto-info"><div class="gasto-desc">${g.desc}</div><div class="gasto-meta">${g.fecha} · ${g.metodo} · ${g.tipo}${g.notas?' · '+g.notas:''}</div></div><div class="gasto-monto">${fmt(g.monto)}</div><button class="btn-edit-gasto" data-id="${g.fireId}">✎</button><button class="btn-del-gasto" data-id="${g.fireId}">×</button>`;
+    item.querySelector('.btn-edit-gasto').addEventListener('click', e=>{ e.stopPropagation(); editandoId=g.fireId; renderLista(); });
     item.querySelector('.btn-del-gasto').addEventListener('click', async e=>{ e.stopPropagation(); if(!confirm('¿Eliminar este gasto?')) return; await deleteDoc(doc(db,'gastos',g.fireId)); });
     lista.appendChild(item);
   });
