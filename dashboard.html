@@ -298,7 +298,7 @@ async function render() {
 
   // Grid horizontal
   [0.25,0.5,0.75,1].forEach(f => {
-    const yv = padT + chartCH - f*chartCH;
+    const yv = cpadT + chartCH - f*chartCH;
     svgContent += `<line x1="${cpadL}" y1="${yv.toFixed(1)}" x2="${CW-cpadR}" y2="${yv.toFixed(1)}" stroke="#2e2e2e" stroke-width="1"/>`;
     svgContent += `<text x="${cpadL-4}" y="${(yv+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#444">${fmt(maxCatVal*f).replace('$','').replace(/\./g,'')}</text>`;
   });
