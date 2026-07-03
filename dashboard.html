@@ -172,6 +172,15 @@ function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 function setSyncStatus(msg,cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
 function mesKey(y,m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
 
+// Misma lógica que finanzas.html: prioriza la lista de fuentes; si el mes es de antes del cambio
+// (ingresos como número simple) la usa igual; si el mes no tiene nada guardado, es 0 — no se inventa un valor.
+function totalIngresos(mesDataObj) {
+  const d = mesDataObj || {};
+  if (d.ingresosList && d.ingresosList.length) return d.ingresosList.reduce((a,i)=>a+i.monto,0);
+  if (typeof d.ingresos === 'number' && d.ingresos > 0) return d.ingresos;
+  return 0;
+}
+
 function calcPresupuesto(mesDataObj, y, m) {
   const d = mesDataObj || {};
   let total = 0;
@@ -224,7 +233,8 @@ async function render() {
 
   const catsActuales = categoriasParaMes(mesData, anio, mesIdx);
 
-  const ing = (mesData.ingresos || BASE_INGRESOS);
+  const ing = totalIngresos(mesData);
+  const ingSafe = ing > 0 ? ing : 1; // evita NaN/Infinity en los % cuando aún no se registra ingreso
   const totalPresup = calcPresupuesto(mesData, anio, mesIdx);
   const balPresup = ing - totalPresup;
   const balReal   = ing - totalReal;
@@ -234,9 +244,9 @@ async function render() {
 
   // --- Cards resumen ---
   const cards = [
-    { label:'Ingresos',       valor:fmt(ing),         cls:'neu',                  sub:'100%' },
-    { label:'Presupuestado',  valor:fmt(totalPresup),  cls:'neu',                  sub:(totalPresup/ing*100).toFixed(1)+'% del ingreso' },
-    { label:'Gastado real',   valor:fmt(totalReal),    cls: totalReal>ing?'neg':'neu', sub:(totalReal/ing*100).toFixed(1)+'% del ingreso' },
+    { label:'Ingresos',       valor:fmt(ing),         cls:'neu',                  sub: ing>0?'100%':'sin registrar' },
+    { label:'Presupuestado',  valor:fmt(totalPresup),  cls:'neu',                  sub:(totalPresup/ingSafe*100).toFixed(1)+'% del ingreso' },
+    { label:'Gastado real',   valor:fmt(totalReal),    cls: totalReal>ing?'neg':'neu', sub:(totalReal/ingSafe*100).toFixed(1)+'% del ingreso' },
     { label:'Balance estimado',valor:(balPresup<0?'-':'')+fmt(balPresup), cls:balPresup>=0?'pos':'neg', sub:balPresup>=0?'disponible':'déficit' },
     { label:'Balance real',   valor:(balReal<0?'-':'')+fmt(balReal),     cls:balReal>=0?'pos':'neg',   sub:balReal>=0?'disponible':'déficit' },
     { label:'Diferencia',     valor:(diff>0?'+':'')+fmt(Math.abs(diff)), cls:diff<=0?'pos':'neg',       sub:diff<=0?'bajo presupuesto':'sobre presupuesto' },
@@ -246,7 +256,7 @@ async function render() {
   ).join('');
 
   // --- Barra global ---
-  const pctU = Math.min(totalReal/ing*100,100);
+  const pctU = Math.min(totalReal/ingSafe*100,100);
   document.getElementById('barra-global').style.width = pctU+'%';
   document.getElementById('pct-txt').textContent = pctU.toFixed(1)+'% usado';
   document.getElementById('barra-left').textContent = balReal>=0?`Quedan ${fmt(balReal)}`:` Déficit ${fmt(Math.abs(balReal))}`;
@@ -331,7 +341,7 @@ async function render() {
   }
   const datos6 = await Promise.all(meses6.map(async ({m,y}) => {
     const [md, {total:tr}] = await Promise.all([cargarMes(y,m), cargarGastos(y,m)]);
-    return { label:MESES[m].slice(0,3), ing:md.ingresos||BASE_INGRESOS, presup:calcPresupuesto(md,y,m), real:tr };
+    return { label:MESES[m].slice(0,3), ing:totalIngresos(md), presup:calcPresupuesto(md,y,m), real:tr };
   }));
 
   const svg = document.getElementById('chart-svg');

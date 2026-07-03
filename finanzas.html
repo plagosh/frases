@@ -101,7 +101,13 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
   <div class="card" style="margin-bottom:1rem">
     <div class="card-label">Ingresos este mes</div>
-    <input class="inp-monto card-valor ingreso" id="inp-ingresos" style="font-size:1.1rem;font-weight:600;width:100%;text-align:left;background:transparent;border:none;padding:0;"/>
+    <div class="card-valor ingreso" id="total-ingresos" style="margin-bottom:0.6rem">$0</div>
+    <div id="lista-ingresos" style="display:flex;flex-direction:column;gap:5px;margin-bottom:0.6rem"></div>
+    <div class="nueva-sub-campos" style="margin-bottom:6px">
+      <input class="inp-nueva" id="ni-label" placeholder="Fuente (ej: Sueldo USS)"/>
+      <input class="inp-nueva" id="ni-monto" type="number" min="0" placeholder="$ Monto"/>
+    </div>
+    <button class="btn-nueva" id="btn-nuevo-ingreso">+ Agregar ingreso</button>
   </div>
 
   <div class="panel-cats" id="panel-cats">
@@ -222,7 +228,7 @@ let categoriasLive = []; // [{id, key, label, color, orden}] — estado vigente 
 const hoy = new Date();
 let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
-let mesData = { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
+let mesData = { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
 
 function claveDoc()  { return `presupuesto_${anio}_${mesIdx}`; }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
@@ -260,8 +266,8 @@ async function cargarMes() {
   try {
     const snap = await getDoc(doc(db,'finanzas',claveDoc()));
     mesData = snap.exists()
-      ? { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null, ...snap.data() }
-      : { ingresos:BASE_INGRESOS, overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
+      ? { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null, ...snap.data() }
+      : { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
     setSyncStatus('✓ Sincronizado','ok');
   } catch(e) { setSyncStatus('Sin conexión','err'); }
   document.getElementById('aviso-pasado').classList.toggle('show', esMesPasado());
@@ -288,12 +294,56 @@ function getTotalCat(catKey) {
 }
 function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 
+function getIngresosList() {
+  // Compatibilidad: meses guardados antes de este cambio tienen mesData.ingresos como número simple.
+  // Los migramos en memoria a una fuente única "Ingreso" — se guarda como lista recién cuando el usuario edite algo.
+  if (mesData.ingresosList && mesData.ingresosList.length) return mesData.ingresosList;
+  if (typeof mesData.ingresos === 'number' && mesData.ingresos > 0) {
+    return [{ id:'principal', label:'Ingreso', monto:mesData.ingresos }];
+  }
+  return []; // mes nuevo sin ningún ingreso registrado todavía — no se inventa un valor
+}
+
+function totalIngresos() {
+  return getIngresosList().reduce((a,i)=>a+i.monto,0);
+}
+
 function renderIngresos() {
-  const inp=document.getElementById('inp-ingresos');
-  const val=mesData.ingresos??BASE_INGRESOS;
-  inp.type='text';
-  inp.value=fmt(val);
-  inp.dataset.raw=val;
+  document.getElementById('total-ingresos').textContent = fmt(totalIngresos());
+  const cont = document.getElementById('lista-ingresos');
+  cont.innerHTML = '';
+  getIngresosList().forEach(ing => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;background:#1e1e2e;border-radius:8px;padding:0.4rem 0.7rem';
+    row.innerHTML = `<div style="flex:1;font-size:0.8rem;color:#ccc" id="ing-lbl-${ing.id}">${ing.label}</div>`;
+    const inp = crearInputMontoIngreso(ing);
+    const btnDel = document.createElement('button');
+    btnDel.className='btn-del-sub'; btnDel.textContent='×';
+    btnDel.addEventListener('click', async ()=>{
+      if(!confirm(`¿Eliminar la fuente "${ing.label}"?`)) return;
+      mesData.ingresosList = getIngresosList().filter(i=>i.id!==ing.id);
+      await guardarMes();
+      renderIngresos();
+    });
+    row.appendChild(inp);
+    row.appendChild(btnDel);
+    cont.appendChild(row);
+  });
+}
+
+function crearInputMontoIngreso(ing) {
+  const inp = document.createElement('input');
+  inp.className='inp-monto'; inp.type='text'; inp.value=fmt(ing.monto);
+  inp.dataset.raw = ing.monto;
+  inp.addEventListener('focus', ()=>{ inp.value=parseInt(inp.dataset.raw)||0; inp.type='number'; });
+  inp.addEventListener('blur', async ()=>{
+    const v=parseInt(inp.value)||0;
+    inp.type='text'; inp.value=fmt(v); inp.dataset.raw=v;
+    mesData.ingresosList = getIngresosList().map(i=>i.id===ing.id?{...i,monto:v}:i);
+    await guardarMes();
+    document.getElementById('total-ingresos').textContent = fmt(totalIngresos());
+  });
+  return inp;
 }
 
 function togglePagado(id, item, btn) {
@@ -507,15 +557,15 @@ document.getElementById('btn-nueva-cat').addEventListener('click', async ()=>{
 
 init();
 
-document.getElementById('inp-ingresos').addEventListener('focus', function(){
-  this.type='number';
-  this.value=parseInt(this.dataset.raw)||0;
-});
-document.getElementById('inp-ingresos').addEventListener('blur', async function(){
-  const v=parseInt(this.value)||0;
-  this.type='text'; this.value=fmt(v); this.dataset.raw=v;
-  mesData.ingresos=v;
+document.getElementById('btn-nuevo-ingreso').addEventListener('click', async ()=>{
+  const label = document.getElementById('ni-label').value.trim();
+  const monto = parseInt(document.getElementById('ni-monto').value)||0;
+  if(!label){ alert('Ingresa un nombre para la fuente'); return; }
+  mesData.ingresosList = getIngresosList().concat([{ id:'ing_'+Date.now(), label, monto }]);
   await guardarMes();
+  document.getElementById('ni-label').value='';
+  document.getElementById('ni-monto').value='';
+  renderIngresos();
 });
 
 document.getElementById('btn-nueva-sub').addEventListener('click', async()=>{
