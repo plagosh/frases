@@ -99,6 +99,11 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   <div class="sync-status" id="sync-status">Conectando…</div>
   <div class="aviso-pasado" id="aviso-pasado">📌 Estás viendo un mes cerrado — muestra las categorías tal como estaban en ese momento, aunque hayas editado o eliminado categorías después.</div>
 
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-label">Ingresos este mes</div>
+    <input class="inp-monto card-valor ingreso" id="inp-ingresos" style="font-size:1.1rem;font-weight:600;width:100%;text-align:left;background:transparent;border:none;padding:0;"/>
+  </div>
+
   <div class="panel-cats" id="panel-cats">
     <div class="seccion-titulo">Gestionar categorías</div>
     <div id="lista-cats-admin"></div>
@@ -283,6 +288,14 @@ function getTotalCat(catKey) {
 }
 function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 
+function renderIngresos() {
+  const inp=document.getElementById('inp-ingresos');
+  const val=mesData.ingresos??BASE_INGRESOS;
+  inp.type='text';
+  inp.value=fmt(val);
+  inp.dataset.raw=val;
+}
+
 function togglePagado(id, item, btn) {
   if(!mesData.pagados) mesData.pagados=[];
   const idx=mesData.pagados.indexOf(id);
@@ -378,6 +391,7 @@ function renderPanelCats() {
 function render() {
   document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio;
   document.getElementById('aviso-pasado').classList.toggle('show', esMesPasado());
+  renderIngresos();
   const cont=document.getElementById('categorias'); cont.innerHTML='';
   const cats = categoriasParaRender();
   cats.forEach(cat=>{
@@ -492,6 +506,17 @@ document.getElementById('btn-nueva-cat').addEventListener('click', async ()=>{
 });
 
 init();
+
+document.getElementById('inp-ingresos').addEventListener('focus', function(){
+  this.type='number';
+  this.value=parseInt(this.dataset.raw)||0;
+});
+document.getElementById('inp-ingresos').addEventListener('blur', async function(){
+  const v=parseInt(this.value)||0;
+  this.type='text'; this.value=fmt(v); this.dataset.raw=v;
+  mesData.ingresos=v;
+  await guardarMes();
+});
 
 document.getElementById('btn-nueva-sub').addEventListener('click', async()=>{
   const label=document.getElementById('ns-label').value.trim();
