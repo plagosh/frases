@@ -60,8 +60,17 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .btn-pagado { background:none; border:1.5px solid #333; border-radius:6px; color:#444; font-size:0.72rem; cursor:pointer; padding:2px 7px; flex-shrink:0; transition:all 0.2s; white-space:nowrap; }
 .btn-pagado:hover { border-color:#4caf82; color:#4caf82; }
 .btn-pagado.pagado { background:#1a3a2a; border-color:#4caf82; color:#4caf82; }
+.btn-pagado.parcial { background:#3a2f14; border-color:#e0b050; color:#e0b050; }
 .concepto-item.pagado-item { opacity:0.55; }
 .concepto-item.pagado-item .concepto-label { text-decoration:line-through; }
+.concepto-item.parcial-item { opacity:0.85; }
+.concepto-item.parcial-item .concepto-label { text-decoration:underline dotted #e0b050; }
+.pendiente-item { display:flex; justify-content:space-between; align-items:center; gap:8px; background:#1e1e2e; border-radius:8px; padding:0.5rem 0.7rem; }
+.pendiente-info { display:flex; align-items:center; gap:8px; min-width:0; }
+.pendiente-label { font-size:0.78rem; color:#ccc; }
+.pendiente-sub { font-size:0.65rem; color:#666; margin-top:1px; }
+.pendiente-monto { font-size:0.8rem; color:#e07070; font-weight:600; flex-shrink:0; }
+.pendiente-vacio { font-size:0.78rem; color:#4caf82; padding:0.3rem 0; }
 .nueva-sub { margin-top:1rem; background:#242424; border-radius:10px; padding:0.8rem 0.9rem; }
 .nueva-sub-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem; }
 .nueva-sub-campos { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
@@ -108,6 +117,13 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
       <input class="inp-nueva" id="ni-monto" type="number" min="0" placeholder="$ Monto"/>
     </div>
     <button class="btn-nueva" id="btn-nuevo-ingreso">+ Agregar ingreso</button>
+  </div>
+
+  <div class="seccion-titulo">Pendiente por pagar</div>
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-label">Total pendiente este mes</div>
+    <div class="card-valor gasto" id="total-pendiente" style="margin-bottom:0.6rem">$0</div>
+    <div id="lista-pendientes" style="display:flex;flex-direction:column;gap:5px"></div>
   </div>
 
   <div class="panel-cats" id="panel-cats">
@@ -228,7 +244,7 @@ let categoriasLive = []; // [{id, key, label, color, orden}] — estado vigente 
 const hoy = new Date();
 let mesIdx = hoy.getMonth();
 let anio   = hoy.getFullYear();
-let mesData = { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
+let mesData = { overrides:{}, labels:{}, ocultos:[], custom:[], pagos:{}, categoriasSnapshot:null };
 
 function claveDoc()  { return `presupuesto_${anio}_${mesIdx}`; }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
@@ -262,12 +278,30 @@ function suscribirCategorias(cb) {
   });
 }
 
+function buscarTotalLegado(id) {
+  for (const catKey in CONCEPTOS_DEF) {
+    if (CONCEPTOS_DEF[catKey].some(c=>c.id===id)) return getMonto(catKey,id);
+  }
+  const sub = (mesData.custom||[]).find(s=>s.id===id);
+  return sub ? getMontoCustom(sub) : 0;
+}
+
+// Compatibilidad: meses guardados con el sistema anterior (pagados:[] como lista de ids "pagado sí/no")
+// se migran en memoria a pagos:{id:monto} usando el total vigente de cada concepto como monto abonado.
+function migrarPagosLegado() {
+  if ((!mesData.pagos || !Object.keys(mesData.pagos).length) && Array.isArray(mesData.pagados) && mesData.pagados.length) {
+    mesData.pagos = {};
+    mesData.pagados.forEach(id=>{ const t=buscarTotalLegado(id); if (t>0) mesData.pagos[id]=t; });
+  }
+}
+
 async function cargarMes() {
   try {
     const snap = await getDoc(doc(db,'finanzas',claveDoc()));
     mesData = snap.exists()
-      ? { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null, ...snap.data() }
-      : { overrides:{}, labels:{}, ocultos:[], custom:[], pagados:[], categoriasSnapshot:null };
+      ? { overrides:{}, labels:{}, ocultos:[], custom:[], pagos:{}, categoriasSnapshot:null, ...snap.data() }
+      : { overrides:{}, labels:{}, ocultos:[], custom:[], pagos:{}, categoriasSnapshot:null };
+    migrarPagosLegado();
     setSyncStatus('✓ Sincronizado','ok');
   } catch(e) { setSyncStatus('Sin conexión','err'); }
   document.getElementById('aviso-pasado').classList.toggle('show', esMesPasado());
@@ -346,22 +380,104 @@ function crearInputMontoIngreso(ing) {
   return inp;
 }
 
-function togglePagado(id, item, btn) {
-  if(!mesData.pagados) mesData.pagados=[];
-  const idx=mesData.pagados.indexOf(id);
-  if(idx>=0) { mesData.pagados.splice(idx,1); btn.textContent='✓ Pagar'; btn.classList.remove('pagado'); item.classList.remove('pagado-item'); }
-  else { mesData.pagados.push(id); btn.textContent='✓ Pagado'; btn.classList.add('pagado'); item.classList.add('pagado-item'); }
-  guardarMes();
+function montoPagadoDe(id) { return mesData.pagos?.[id] || 0; }
+
+function estadoPagoCalc(id, total) {
+  const pagado = montoPagadoDe(id);
+  if (pagado<=0) return 'no';
+  if (total>0 && pagado>=total) return 'pagado';
+  return 'parcial';
 }
 
-function crearBtnPagado(id, item) {
+function aplicarEstadoPago(id, total, btn, item) {
+  const pagado = montoPagadoDe(id);
+  const estado = estadoPagoCalc(id, total);
+  btn.classList.remove('pagado','parcial');
+  item.classList.remove('pagado-item','parcial-item');
+  if (estado==='pagado') { btn.textContent='✓ Pagado'; btn.classList.add('pagado'); item.classList.add('pagado-item'); }
+  else if (estado==='parcial') { btn.textContent='◐ '+fmt(pagado); btn.classList.add('parcial'); item.classList.add('parcial-item'); }
+  else { btn.textContent='Pagar'; }
+}
+
+async function guardarPago(id, monto) {
+  if(!mesData.pagos) mesData.pagos={};
+  if(monto>0) mesData.pagos[id]=monto; else delete mesData.pagos[id];
+  await guardarMes();
+  renderPendientes();
+}
+
+function crearControlPago(id, item, total) {
   const btn=document.createElement('button');
-  const isPagado=(mesData.pagados||[]).includes(id);
-  btn.className='btn-pagado'+(isPagado?' pagado':'');
-  btn.textContent=isPagado?'✓ Pagado':'✓ Pagar';
-  if(isPagado) item.classList.add('pagado-item');
-  btn.addEventListener('click',e=>{ e.stopPropagation(); togglePagado(id,item,btn); });
-  return btn;
+  btn.className='btn-pagado';
+
+  const form=document.createElement('div');
+  form.className='edit-inline';
+  const pagadoActual=montoPagadoDe(id);
+  form.innerHTML=`<div class="edit-inline-row"><input class="inp-edit" type="number" min="0" placeholder="Monto abonado" id="pf-inp-${id}" value="${pagadoActual||''}"/></div><div class="edit-inline-row"><button class="btn-edit-ok" id="pf-ok-${id}">Guardar abono</button><button class="btn-edit-ok" id="pf-full-${id}" style="background:#1a6b3a">Pagado completo</button><button class="btn-edit-cancel" id="pf-clear-${id}">Sin pago</button></div>`;
+
+  aplicarEstadoPago(id, total, btn, item);
+  btn.addEventListener('click', e=>{ e.stopPropagation(); form.classList.toggle('open'); });
+
+  form.querySelector(`#pf-ok-${id}`).addEventListener('click', async e=>{
+    e.stopPropagation();
+    const v=parseInt(form.querySelector(`#pf-inp-${id}`).value)||0;
+    await guardarPago(id, v);
+    aplicarEstadoPago(id, total, btn, item);
+    form.classList.remove('open');
+  });
+  form.querySelector(`#pf-full-${id}`).addEventListener('click', async e=>{
+    e.stopPropagation();
+    await guardarPago(id, total);
+    form.querySelector(`#pf-inp-${id}`).value=total;
+    aplicarEstadoPago(id, total, btn, item);
+    form.classList.remove('open');
+  });
+  form.querySelector(`#pf-clear-${id}`).addEventListener('click', async e=>{
+    e.stopPropagation();
+    await guardarPago(id, 0);
+    form.querySelector(`#pf-inp-${id}`).value='';
+    aplicarEstadoPago(id, total, btn, item);
+    form.classList.remove('open');
+  });
+
+  return { btn, form };
+}
+
+function todosLosConceptos() {
+  const cats = categoriasParaRender();
+  const out = [];
+  cats.forEach(cat=>{
+    conceptosDe(cat.key).forEach(con=>{
+      if (mesData.ocultos?.includes(con.id)) return;
+      const label = mesData.labels?.[con.id]?.label || con.label;
+      out.push({ id:con.id, catLabel:cat.label, catColor:cat.color, label, total:getMonto(cat.key,con.id) });
+    });
+    (mesData.custom||[]).filter(s=>s.catKey===cat.key).forEach(sub=>{
+      out.push({ id:sub.id, catLabel:cat.label, catColor:cat.color, label:sub.label, total:getMontoCustom(sub) });
+    });
+  });
+  return out;
+}
+
+function renderPendientes() {
+  const pendientes = todosLosConceptos()
+    .map(c=>({ ...c, pagado:montoPagadoDe(c.id), falta: c.total - montoPagadoDe(c.id) }))
+    .filter(c=>c.falta>0)
+    .sort((a,b)=>b.falta-a.falta);
+  const totalFalta = pendientes.reduce((a,c)=>a+c.falta,0);
+  document.getElementById('total-pendiente').textContent = fmt(totalFalta);
+  const cont = document.getElementById('lista-pendientes');
+  cont.innerHTML = '';
+  if (!pendientes.length) {
+    cont.innerHTML = '<div class="pendiente-vacio">🎉 No queda nada pendiente este mes</div>';
+    return;
+  }
+  pendientes.forEach(p=>{
+    const row = document.createElement('div');
+    row.className = 'pendiente-item';
+    row.innerHTML = `<div class="pendiente-info"><div class="cat-dot" style="background:${p.catColor}"></div><div><div class="pendiente-label">${p.label}</div><div class="pendiente-sub">${p.catLabel}${p.pagado>0?` · abonado ${fmt(p.pagado)}`:''}</div></div></div><div class="pendiente-monto">${fmt(p.falta)}</div>`;
+    cont.appendChild(row);
+  });
 }
 
 function crearInputMonto(val,base,catKey,id) {
@@ -462,10 +578,12 @@ function render() {
       const btnEdit=document.createElement('button'); btnEdit.className='btn-edit-sub'; btnEdit.textContent='✎';
       const btnDel=document.createElement('button'); btnDel.className='btn-del-sub'; btnDel.textContent='×';
       const acciones=document.createElement('div'); acciones.style.cssText='display:flex;align-items:center;gap:4px;flex-shrink:0';
-      acciones.appendChild(crearBtnPagado(con.id,item));
+      const pago=crearControlPago(con.id,item,val);
+      acciones.appendChild(pago.btn);
       acciones.appendChild(crearInputMonto(val,base,cat.key,con.id));
       acciones.appendChild(btnEdit); acciones.appendChild(btnDel);
       item.appendChild(info); item.appendChild(acciones); detalle.appendChild(item);
+      detalle.appendChild(pago.form);
 
       const editForm=document.createElement('div'); editForm.className='edit-inline';
       editForm.innerHTML=`<div class="edit-inline-row"><input class="inp-edit" id="ef-label-${con.id}" value="${labelGuardado}"/><input class="inp-edit" id="ef-nota-${con.id}" value="${notaGuardada}"/></div><div class="edit-inline-row"><button class="btn-edit-ok" id="ef-ok-${con.id}">Guardar</button><button class="btn-edit-cancel" id="ef-cancel-${con.id}">Cancelar</button></div>`;
@@ -494,10 +612,12 @@ function render() {
       const btnEdit=document.createElement('button'); btnEdit.className='btn-edit-sub'; btnEdit.textContent='✎';
       const btnDel=document.createElement('button'); btnDel.className='btn-del-sub'; btnDel.textContent='×';
       const acciones=document.createElement('div'); acciones.style.cssText='display:flex;align-items:center;gap:4px;flex-shrink:0';
-      acciones.appendChild(crearBtnPagado(sub.id,item));
+      const pago=crearControlPago(sub.id,item,val);
+      acciones.appendChild(pago.btn);
       acciones.appendChild(crearInputMonto(val,sub.monto,sub.catKey,sub.id));
       acciones.appendChild(btnEdit); acciones.appendChild(btnDel);
       item.appendChild(info); item.appendChild(acciones); detalle.appendChild(item);
+      detalle.appendChild(pago.form);
 
       const editForm=document.createElement('div'); editForm.className='edit-inline';
       editForm.innerHTML=`<div class="edit-inline-row"><input class="inp-edit" id="ef-label-${sub.id}" value="${sub.label}"/><input class="inp-edit" id="ef-nota-${sub.id}" value="${sub.nota||''}"/></div><div class="edit-inline-row"><button class="btn-edit-ok" id="ef-ok-${sub.id}">Guardar</button><button class="btn-edit-cancel" id="ef-cancel-${sub.id}">Cancelar</button></div>`;
@@ -521,6 +641,7 @@ function render() {
     header.addEventListener('click',()=>{ const arrow=header.querySelector('.cat-arrow'); const isOpen=detalle.classList.toggle('open'); arrow.classList.toggle('open',isOpen); });
     bloque.appendChild(header); bloque.appendChild(detalle); cont.appendChild(bloque);
   });
+  renderPendientes();
 }
 
 async function init() {
