@@ -7,8 +7,12 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #191919; padding: 1.2rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
-  .header { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
+  .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 0.4rem; }
+  .header-left { display: flex; align-items: center; gap: 8px; }
   .titulo { color: #e8e8e8; font-size: 1rem; font-weight: 500; }
+  .sync-status { font-size: 0.65rem; color: #555; text-align:right; margin-bottom:0.7rem; }
+  .sync-status.ok { color:#4caf82; }
+  .sync-status.err { color:#e07070; }
   .toolbar { display: flex; gap: 6px; margin-bottom: 0.8rem; flex-wrap: wrap; }
   .inp { flex: 1; min-width: 100px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 10px; padding: 0.5rem 0.8rem; color: #e8e8e8; font-size: 0.82rem; font-family: inherit; height: 36px; outline: none; }
   .inp:focus { border-color: #555; }
@@ -46,9 +50,12 @@
 </head>
 <body>
 <div class="header">
-  <span style="font-size:1.2rem">🛍️</span>
-  <span class="titulo">Lista de deseos</span>
+  <div class="header-left">
+    <span style="font-size:1.2rem">🛍️</span>
+    <span class="titulo">Lista de deseos</span>
+  </div>
 </div>
+<div class="sync-status" id="sync-status">Conectando…</div>
 <div class="toolbar">
   <input class="inp" id="inpNombre" placeholder="Qué quieres comprar..."/>
   <input class="inp inp-precio" id="inpPrecio" placeholder="$ precio"/>
@@ -72,13 +79,49 @@
 <div class="lista" id="lista"></div>
 <div class="resumen" id="resumen"></div>
 
-<script>
-let items = [];
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// Mismo proyecto Firebase que ya usa finanzas.html — se agrega la colección "deseos".
+const firebaseConfig = {
+  apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
+  authDomain: "finanzas-personal-12490.firebaseapp.com",
+  projectId: "finanzas-personal-12490",
+  storageBucket: "finanzas-personal-12490.firebasestorage.app",
+  messagingSenderId: "1062344169400",
+  appId: "1:1062344169400:web:75075634e2d4a416b3614d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+let items = []; // [{id, nombre, precio, cat, comprado, creado}]
 let filtro = 'Todos';
 
-try { const s = localStorage.getItem('lista_deseos'); if(s) items = JSON.parse(s); } catch(e){}
+function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
 
-function guardar() { try { localStorage.setItem('lista_deseos', JSON.stringify(items)); } catch(e){} }
+// Migración única: si el navegador tiene datos guardados con el sistema viejo (localStorage),
+// se suben a Firestore la primera vez que se abre esta versión. Después no se vuelve a repetir.
+async function migrarLocalStorage() {
+  if (localStorage.getItem('deseos_migrado')) return;
+  try {
+    const s = localStorage.getItem('lista_deseos');
+    if (s) {
+      const antiguos = JSON.parse(s);
+      for (const it of antiguos) {
+        await addDoc(collection(db,'deseos'), {
+          nombre: it.nombre || '',
+          precio: it.precio || '',
+          cat: it.cat || 'Otro',
+          comprado: !!it.comprado,
+          creado: Date.now()
+        });
+      }
+    }
+  } catch(e) { console.error('Error migrando localStorage', e); }
+  localStorage.setItem('deseos_migrado','1');
+}
 
 function render() {
   const lista = document.getElementById('lista');
@@ -88,16 +131,15 @@ function render() {
   if (filtrados.length === 0) {
     lista.innerHTML = '<div class="empty">Sin items todavía</div>';
   } else {
-    lista.innerHTML = filtrados.map((item, fi) => {
-      const i = items.indexOf(item);
+    lista.innerHTML = filtrados.map(item => {
       return `<div class="item${item.comprado ? ' comprado' : ''}" style="border-left-color:${item.comprado?'#4caf82':'#666'}">
-        <div class="check${item.comprado?' done':''}" onclick="toggle(${i})">${item.comprado?'✓':''}</div>
+        <div class="check${item.comprado?' done':''}" data-id="${item.id}" data-action="toggle">${item.comprado?'✓':''}</div>
         <div class="item-info">
           <div class="item-nombre" title="${item.nombre}">${item.nombre}</div>
           <div class="item-meta"><span class="badge badge-${item.cat}">${item.cat}</span></div>
         </div>
         ${item.precio ? `<span class="item-precio">$${Number(item.precio).toLocaleString('es-CL')}</span>` : ''}
-        <button class="btn-del" onclick="eliminar(${i})">×</button>
+        <button class="btn-del" data-id="${item.id}" data-action="eliminar">×</button>
       </div>`;
     }).join('');
   }
@@ -111,16 +153,37 @@ function render() {
   `;
 }
 
-function toggle(i) { items[i].comprado = !items[i].comprado; guardar(); render(); }
-function eliminar(i) { items.splice(i,1); guardar(); render(); }
+async function toggle(id) {
+  const it = items.find(i=>i.id===id);
+  if (!it) return;
+  try { await updateDoc(doc(db,'deseos',id), { comprado: !it.comprado }); }
+  catch(e) { setSyncStatus('Error al guardar','err'); }
+}
 
-document.getElementById('btnAdd').addEventListener('click', () => {
+async function eliminar(id) {
+  if(!confirm('¿Eliminar este item?')) return;
+  try { await deleteDoc(doc(db,'deseos',id)); }
+  catch(e) { setSyncStatus('Error al guardar','err'); }
+}
+
+document.getElementById('lista').addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const id = el.dataset.id;
+  if (el.dataset.action === 'toggle') toggle(id);
+  else if (el.dataset.action === 'eliminar') eliminar(id);
+});
+
+document.getElementById('btnAdd').addEventListener('click', async () => {
   const nombre = document.getElementById('inpNombre').value.trim();
   if (!nombre) return;
-  items.unshift({ nombre, precio: document.getElementById('inpPrecio').value.replace(/[^0-9]/g,''), cat: document.getElementById('selCat').value, comprado: false });
-  guardar(); render();
+  const precio = document.getElementById('inpPrecio').value.replace(/[^0-9]/g,'');
+  const cat = document.getElementById('selCat').value;
   document.getElementById('inpNombre').value = '';
   document.getElementById('inpPrecio').value = '';
+  try {
+    await addDoc(collection(db,'deseos'), { nombre, precio, cat, comprado:false, creado: Date.now() });
+  } catch(e) { setSyncStatus('Error al guardar','err'); }
 });
 
 document.getElementById('inpNombre').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnAdd').click(); });
@@ -133,7 +196,21 @@ document.getElementById('cats').addEventListener('click', e => {
   render();
 });
 
-render();
+async function init() {
+  setSyncStatus('Cargando…');
+  await migrarLocalStorage();
+  const q = query(collection(db,'deseos'), orderBy('creado','desc'));
+  onSnapshot(q, snap => {
+    items = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+    setSyncStatus('✓ Sincronizado','ok');
+  }, err => {
+    console.error(err);
+    setSyncStatus('Sin conexión','err');
+  });
+}
+
+init();
 </script>
 </body>
 </html>
