@@ -46,12 +46,14 @@
   .sync-status.err { color:#e07070; }
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.6rem;
   }
   .input-nota {
-    flex: 1;
+    flex: 2 1 160px;
+    min-width: 140px;
     background: #2a2a2a;
     border: 1px solid #3a3a3a;
     border-radius: 10px;
@@ -64,6 +66,22 @@
     transition: border-color 0.2s;
   }
   .input-nota:focus { border-color: #666; }
+  .input-titulo {
+    flex: 0 0 150px;
+    min-width: 110px;
+  }
+  .select-categoria {
+    flex: 0 0 140px;
+    height: 42px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    color: #e8e8e8;
+    font-family: inherit;
+    font-size: 0.82rem;
+    padding: 0 0.6rem;
+    outline: none;
+  }
   .btn-add {
     background: #3a3a3a;
     border: none;
@@ -81,19 +99,46 @@
   }
   .btn-add:hover { background: #4a4a4a; }
   .btn-add:disabled { background:#2a2a2a; color:#555; cursor:not-allowed; }
+  .btn-categorias {
+    flex-shrink: 0;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: #aaa;
+    font-size: 0.78rem;
+    padding: 0 0.8rem;
+    height: 42px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .btn-categorias:hover { background: #3a3a3a; color: #e8e8e8; }
+  .toolbar-fila2 { margin-bottom: 1.2rem; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
   }
   .nota {
     border-radius: 12px;
-    padding: 1rem;
-    min-height: 120px;
+    padding: 1.3rem;
+    min-height: 170px;
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+  }
+  .nota-cat-badge {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(0,0,0,0.45);
+    margin-bottom: 0.35rem;
+  }
+  .nota-titulo-display {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(0,0,0,0.85);
+    margin-bottom: 0.35rem;
+    word-break: break-word;
   }
   .nota-texto {
     font-size: 0.85rem;
@@ -114,8 +159,22 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 0.6rem;
+    gap: 6px;
   }
   .nota-fecha { font-size: 0.65rem; color: rgba(0,0,0,0.4); }
+  .nota-acciones { display: flex; align-items: center; }
+  .btn-expand {
+    background: none;
+    border: none;
+    color: rgba(0,0,0,0.3);
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .btn-expand:hover { color: rgba(0,0,0,0.6); }
   .btn-delete {
     background: none;
     border: none;
@@ -135,6 +194,174 @@
     padding: 2rem 0;
     grid-column: 1/-1;
   }
+
+  /* Modal nota en pantalla completa */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 20;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .modal-overlay.abierto { display: flex; }
+  .modal-box {
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    border-radius: 14px;
+    padding: 1.8rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .modal-titulo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    color: rgba(0,0,0,0.85);
+    margin-bottom: 0.7rem;
+  }
+  .modal-titulo::placeholder { color: rgba(0,0,0,0.3); }
+  .modal-texto {
+    flex: 1;
+    min-height: 280px;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: rgba(0,0,0,0.8);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    width: 100%;
+  }
+  .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    gap: 8px;
+  }
+  .select-categoria-modal {
+    background: rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.18);
+    color: rgba(0,0,0,0.7);
+    border-radius: 8px;
+    height: 32px;
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
+    font-family: inherit;
+  }
+  .btn-cerrar-modal {
+    background: rgba(0,0,0,0.1);
+    border: none;
+    color: rgba(0,0,0,0.6);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 8px;
+  }
+  .btn-cerrar-modal:hover { background: rgba(0,0,0,0.18); }
+
+  /* Modal categorías */
+  .modal-cat-box {
+    background: #242424;
+    color: #e8e8e8;
+    max-width: 420px;
+  }
+  .modal-cat-box h3 {
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    color: #ccc;
+    font-weight: 600;
+  }
+  .lista-categorias { max-height: 40vh; overflow-y: auto; }
+  .fila-categoria {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #333;
+  }
+  .fila-categoria input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #e8e8e8;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+    padding: 4px 2px;
+  }
+  .fila-categoria input[type="color"] {
+    width: 28px; height: 28px;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .fila-categoria .btn-delete-cat {
+    background: none; border: none;
+    color: #888; font-size: 1rem;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .fila-categoria .btn-delete-cat:hover { color: #e07070; }
+  .nueva-categoria {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 6px;
+    align-items: center;
+  }
+  .nueva-categoria input[type="text"] {
+    flex: 1;
+    background: #2f2f2f;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    color: #e8e8e8;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .nueva-categoria input[type="color"] {
+    width: 32px; height: 32px;
+    border: none; padding: 0;
+    cursor: pointer; background: none;
+    flex-shrink: 0;
+  }
+  .nueva-categoria button {
+    background: #3a3a3a;
+    border: none;
+    color: #e8e8e8;
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+  .nueva-categoria button:hover { background: #4a4a4a; }
+  .cat-vacio { color: #666; font-size: 0.8rem; padding: 10px 0; }
+  .btn-cerrar-cat {
+    margin-top: 14px;
+    background: #333;
+    border: none;
+    color: #e8e8e8;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    align-self: flex-end;
+  }
+  .btn-cerrar-cat:hover { background: #444; }
 </style>
 </head>
 <body>
@@ -143,15 +370,46 @@
   <div class="estacion-label" id="estacion"></div>
   <div class="sync-status" id="sync-status">Conectando…</div>
   <div class="toolbar">
+    <input type="text" class="input-nota input-titulo" id="inputTitulo" placeholder="Título (opcional)"/>
+    <select class="select-categoria" id="selectCategoria"><option value="">Sin categoría</option></select>
     <input type="text" class="input-nota" id="input" placeholder="Escribe una nota rápida..."/>
     <button class="btn-add" id="btnAdd">+</button>
+  </div>
+  <div class="toolbar toolbar-fila2">
+    <button class="btn-categorias" id="btnCategorias">⚙ Categorías</button>
   </div>
   <div class="grid" id="grid"></div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <input class="modal-titulo" id="modalTitulo" placeholder="Título"/>
+    <textarea class="modal-texto" id="modalTexto"></textarea>
+    <div class="modal-footer">
+      <span class="nota-fecha" id="modalFecha"></span>
+      <select class="select-categoria-modal" id="modalSelectCategoria"><option value="">Sin categoría</option></select>
+      <button class="btn-cerrar-modal" id="btnCerrarModal">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalCatOverlay">
+  <div class="modal-box modal-cat-box">
+    <h3>Categorías</h3>
+    <div class="lista-categorias" id="listaCategorias"></div>
+    <div class="nueva-categoria">
+      <input type="text" id="nuevaCatNombre" placeholder="Nueva categoría"/>
+      <input type="color" id="nuevaCatColor" value="#ffd166"/>
+      <button id="btnAgregarCategoria">+</button>
+    </div>
+    <button class="btn-cerrar-cat" id="btnCerrarCatModal">Cerrar</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { autenticar } from './pin-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -167,11 +425,7 @@ const db  = getFirestore(app);
 
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
 
-const colores = [
-  '#ffd166','#ffa07a','#98d8c8','#c3b1e1',
-  '#a8d8ea','#f7c59f','#b5ead7','#ffc8dd',
-  '#caffbf','#fdffb6','#e0c3fc','#90e0ef'
-];
+const COLOR_SIN_CATEGORIA = '#d9d9d9';
 
 // Estación hemisferio sur
 const mes = new Date().getMonth() + 1;
@@ -204,11 +458,34 @@ for (let i = 0; i < cfg.count; i++) {
   pContainer.appendChild(el);
 }
 
-// Notas — ahora en Firestore (colección "notas"), sincronizadas entre dispositivos
+// Notas y categorías — Firestore, sincronizadas entre dispositivos
 let notas = [];
+let categorias = [];
 const debounceTimers = {};
 
-function colorPorIndice(i) { return colores[i % colores.length]; }
+function colorDeCategoria(categoriaId) {
+  if (!categoriaId) return COLOR_SIN_CATEGORIA;
+  const cat = categorias.find(c => c.id === categoriaId);
+  return cat ? cat.color : COLOR_SIN_CATEGORIA;
+}
+
+function nombreDeCategoria(categoriaId) {
+  if (!categoriaId) return null;
+  const cat = categorias.find(c => c.id === categoriaId);
+  return cat ? cat.nombre : null;
+}
+
+function llenarSelect(selectEl, valorSeleccionado) {
+  selectEl.innerHTML = '<option value="">Sin categoría</option>' +
+    categorias.map(c => `<option value="${c.id}">${escaparHtml(c.nombre)}</option>`).join('');
+  selectEl.value = valorSeleccionado || '';
+}
+
+function escaparHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
 function render() {
   const grid = document.getElementById('grid');
@@ -217,10 +494,25 @@ function render() {
     grid.innerHTML = '<div class="empty">Sin notas todavía. ¡Agrega una arriba!</div>';
     return;
   }
-  notas.forEach((nota, i) => {
+  notas.forEach((nota) => {
     const div = document.createElement('div');
     div.className = 'nota';
-    div.style.background = colorPorIndice(i);
+    div.style.background = colorDeCategoria(nota.categoriaId);
+
+    const catNombre = nombreDeCategoria(nota.categoriaId);
+    if (catNombre) {
+      const badge = document.createElement('div');
+      badge.className = 'nota-cat-badge';
+      badge.textContent = catNombre;
+      div.appendChild(badge);
+    }
+
+    if (nota.titulo) {
+      const tituloDiv = document.createElement('div');
+      tituloDiv.className = 'nota-titulo-display';
+      tituloDiv.textContent = nota.titulo;
+      div.appendChild(tituloDiv);
+    }
 
     const textarea = document.createElement('textarea');
     textarea.className = 'nota-texto';
@@ -241,6 +533,15 @@ function render() {
     fecha.className = 'nota-fecha';
     fecha.textContent = nota.fecha;
 
+    const acciones = document.createElement('div');
+    acciones.className = 'nota-acciones';
+
+    const btnExpand = document.createElement('button');
+    btnExpand.className = 'btn-expand';
+    btnExpand.textContent = '⤢';
+    btnExpand.title = 'Abrir en pantalla completa';
+    btnExpand.addEventListener('click', () => abrirModal(nota));
+
     const btnDel = document.createElement('button');
     btnDel.className = 'btn-delete';
     btnDel.textContent = '×';
@@ -249,12 +550,175 @@ function render() {
       catch (e) { setSyncStatus('Error al eliminar: ' + e.message, 'err'); }
     });
 
+    acciones.appendChild(btnExpand);
+    acciones.appendChild(btnDel);
     footer.appendChild(fecha);
-    footer.appendChild(btnDel);
+    footer.appendChild(acciones);
     div.appendChild(textarea);
     div.appendChild(footer);
     grid.appendChild(div);
   });
+}
+
+// ---- Modal nota pantalla completa ----
+let modalFireId = null;
+const modalOverlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+const modalTitulo = document.getElementById('modalTitulo');
+const modalTexto = document.getElementById('modalTexto');
+const modalFecha = document.getElementById('modalFecha');
+const modalSelectCategoria = document.getElementById('modalSelectCategoria');
+
+function abrirModal(nota) {
+  modalFireId = nota.fireId;
+  modalBox.style.background = colorDeCategoria(nota.categoriaId);
+  modalTitulo.value = nota.titulo || '';
+  modalTexto.value = nota.texto;
+  modalFecha.textContent = nota.fecha;
+  llenarSelect(modalSelectCategoria, nota.categoriaId);
+  modalOverlay.classList.add('abierto');
+  setTimeout(() => modalTexto.focus(), 50);
+}
+
+function cerrarModal() {
+  modalOverlay.classList.remove('abierto');
+  modalFireId = null;
+}
+
+modalTitulo.addEventListener('input', () => {
+  if (!modalFireId) return;
+  const titulo = modalTitulo.value;
+  const id = modalFireId;
+  const key = id + '_titulo';
+  clearTimeout(debounceTimers[key]);
+  debounceTimers[key] = setTimeout(async () => {
+    try { await updateDoc(doc(db, 'notas', id), { titulo }); }
+    catch (e) { setSyncStatus('Error al guardar: ' + e.message, 'err'); }
+  }, 500);
+});
+
+modalTexto.addEventListener('input', () => {
+  if (!modalFireId) return;
+  const texto = modalTexto.value;
+  const id = modalFireId;
+  clearTimeout(debounceTimers[id]);
+  debounceTimers[id] = setTimeout(async () => {
+    try { await updateDoc(doc(db, 'notas', id), { texto }); }
+    catch (e) { setSyncStatus('Error al guardar: ' + e.message, 'err'); }
+  }, 500);
+});
+
+modalSelectCategoria.addEventListener('change', async () => {
+  if (!modalFireId) return;
+  const categoriaId = modalSelectCategoria.value || null;
+  try {
+    await updateDoc(doc(db, 'notas', modalFireId), { categoriaId });
+    modalBox.style.background = colorDeCategoria(categoriaId);
+  } catch (e) { setSyncStatus('Error al guardar: ' + e.message, 'err'); }
+});
+
+document.getElementById('btnCerrarModal').addEventListener('click', cerrarModal);
+modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) cerrarModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (modalOverlay.classList.contains('abierto')) cerrarModal();
+    if (modalCatOverlay.classList.contains('abierto')) cerrarModalCat();
+  }
+});
+
+// ---- Modal categorías ----
+const modalCatOverlay = document.getElementById('modalCatOverlay');
+const listaCategorias = document.getElementById('listaCategorias');
+
+function abrirModalCat() {
+  renderListaCategorias();
+  modalCatOverlay.classList.add('abierto');
+}
+function cerrarModalCat() { modalCatOverlay.classList.remove('abierto'); }
+
+function renderListaCategorias() {
+  listaCategorias.innerHTML = '';
+  if (categorias.length === 0) {
+    listaCategorias.innerHTML = '<div class="cat-vacio">No hay categorías todavía.</div>';
+    return;
+  }
+  categorias.forEach(cat => {
+    const fila = document.createElement('div');
+    fila.className = 'fila-categoria';
+
+    const inputNombre = document.createElement('input');
+    inputNombre.type = 'text';
+    inputNombre.value = cat.nombre;
+    inputNombre.addEventListener('input', () => {
+      const nombre = inputNombre.value.trim();
+      const key = 'cat_nombre_' + cat.id;
+      clearTimeout(debounceTimers[key]);
+      debounceTimers[key] = setTimeout(async () => {
+        if (!nombre) return;
+        try { await updateDoc(doc(db, 'categorias', cat.id), { nombre }); }
+        catch (e) { setSyncStatus('Error al guardar categoría: ' + e.message, 'err'); }
+      }, 500);
+    });
+
+    const inputColor = document.createElement('input');
+    inputColor.type = 'color';
+    inputColor.value = cat.color;
+    inputColor.addEventListener('input', async () => {
+      try { await updateDoc(doc(db, 'categorias', cat.id), { color: inputColor.value }); }
+      catch (e) { setSyncStatus('Error al guardar color: ' + e.message, 'err'); }
+    });
+
+    const btnDelCat = document.createElement('button');
+    btnDelCat.className = 'btn-delete-cat';
+    btnDelCat.textContent = '×';
+    btnDelCat.title = 'Eliminar categoría';
+    btnDelCat.addEventListener('click', () => eliminarCategoria(cat.id));
+
+    fila.appendChild(inputNombre);
+    fila.appendChild(inputColor);
+    fila.appendChild(btnDelCat);
+    listaCategorias.appendChild(fila);
+  });
+}
+
+async function eliminarCategoria(catId) {
+  try {
+    // Reasignar notas de esta categoría a "Sin categoría" antes de borrarla
+    const q = query(collection(db, 'notas'), where('categoriaId', '==', catId));
+    const snap = await getDocs(q);
+    await Promise.all(snap.docs.map(d => updateDoc(doc(db, 'notas', d.id), { categoriaId: null })));
+    await deleteDoc(doc(db, 'categorias', catId));
+  } catch (e) {
+    setSyncStatus('Error al eliminar categoría: ' + e.message, 'err');
+  }
+}
+
+document.getElementById('btnAgregarCategoria').addEventListener('click', async () => {
+  const nombreEl = document.getElementById('nuevaCatNombre');
+  const colorEl = document.getElementById('nuevaCatColor');
+  const nombre = nombreEl.value.trim();
+  if (!nombre) return;
+  try {
+    await addDoc(collection(db, 'categorias'), { nombre, color: colorEl.value, creadoEn: new Date().toISOString() });
+    nombreEl.value = '';
+  } catch (e) {
+    setSyncStatus('Error al crear categoría: ' + e.message, 'err');
+  }
+});
+
+document.getElementById('btnCategorias').addEventListener('click', abrirModalCat);
+document.getElementById('btnCerrarCatModal').addEventListener('click', cerrarModalCat);
+modalCatOverlay.addEventListener('click', e => { if (e.target === modalCatOverlay) cerrarModalCat(); });
+
+// ---- Suscripciones Firestore ----
+function suscribirCategorias() {
+  const q = query(collection(db, 'categorias'), orderBy('creadoEn', 'asc'));
+  onSnapshot(q, snap => {
+    categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    llenarSelect(document.getElementById('selectCategoria'), document.getElementById('selectCategoria').value);
+    if (modalCatOverlay.classList.contains('abierto')) renderListaCategorias();
+    render();
+  }, err => setSyncStatus('Error de conexión: ' + err.message, 'err'));
 }
 
 function suscribir() {
@@ -271,7 +735,10 @@ function suscribir() {
 
 async function agregarNota() {
   const input = document.getElementById('input');
+  const inputTitulo = document.getElementById('inputTitulo');
+  const selectCategoria = document.getElementById('selectCategoria');
   const texto = input.value.trim();
+  const titulo = inputTitulo.value.trim();
   if (!texto) return;
   const hoy = new Date();
   const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
@@ -279,8 +746,15 @@ async function agregarNota() {
   const btn = document.getElementById('btnAdd');
   btn.disabled = true;
   try {
-    await addDoc(collection(db, 'notas'), { texto, fecha, creadoEn: new Date().toISOString() });
+    await addDoc(collection(db, 'notas'), {
+      texto,
+      titulo: titulo || null,
+      categoriaId: selectCategoria.value || null,
+      fecha,
+      creadoEn: new Date().toISOString()
+    });
     input.value = '';
+    inputTitulo.value = '';
   } catch (e) {
     setSyncStatus('Error al guardar: ' + e.message, 'err');
   }
@@ -291,8 +765,14 @@ document.getElementById('btnAdd').addEventListener('click', agregarNota);
 document.getElementById('input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); agregarNota(); }
 });
+document.getElementById('inputTitulo').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('input').focus(); }
+});
 
-suscribir();
+autenticar(app).then(() => {
+  suscribirCategorias();
+  suscribir();
+});
 </script>
 </body>
 </html>

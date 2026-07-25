@@ -118,6 +118,7 @@ svg text { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, collection, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { autenticar } from './pin-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -374,7 +375,7 @@ async function render() {
 document.getElementById('btn-prev').addEventListener('click', ()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} render(); });
 document.getElementById('btn-next').addEventListener('click', ()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} render(); });
 
-render();
+autenticar(app).then(render);
 </script>
 </body>
 </html>

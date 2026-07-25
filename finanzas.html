@@ -157,6 +157,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { autenticar } from './pin-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOQcAM_qUgsr2SiDO4ZJtHSHJP25g0GSA",
@@ -676,7 +677,7 @@ document.getElementById('btn-nueva-cat').addEventListener('click', async ()=>{
   document.getElementById('nc-label').value='';
 });
 
-init();
+autenticar(app).then(init);
 
 document.getElementById('btn-nuevo-ingreso').addEventListener('click', async ()=>{
   const label = document.getElementById('ni-label').value.trim();
