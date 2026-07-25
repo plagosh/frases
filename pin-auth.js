@@ -6,7 +6,7 @@ import { getAuth, signInWithCustomToken, onAuthStateChanged } from 'https://www.
 
 // TODO: reemplazar por la URL real después de `firebase deploy --only functions`.
 // Se ve así: https://REGION-PROJECTID.cloudfunctions.net/solicitarAcceso
-const CLOUD_FN_URL = 'https://us-central1-finanzas-personal-12490.cloudfunctions.net/solicitarAcceso';
+const CLOUD_FN_URL = 'https://solicitaracceso-cvu64e6glq-uc.a.run.app';
 
 /**
  * Bloquea la carga de datos hasta validar el PIN contra el Cloud Function.
