@@ -82,6 +82,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { autenticar } from './pin-auth.js';
 
 // Mismo proyecto Firebase que ya usa finanzas.html — se agrega la colección "deseos".
 const firebaseConfig = {
@@ -210,7 +211,9 @@ async function init() {
   });
 }
 
-init();
+autenticar(app).then(() => {
+  init();
+});
 </script>
 </body>
 </html>
