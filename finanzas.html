@@ -97,6 +97,7 @@ body { background:#191919; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   <div class="header">
     <div class="titulo"></div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <button class="btn-cats" id="btn-csv">⬇ CSV</button>
       <button class="btn-cats" id="btn-cats">⚙ Categorías</button>
       <div class="mes-nav">
         <button class="btn-mes" id="btn-prev">‹</button>
@@ -328,6 +329,18 @@ function getTotalCat(catKey) {
   return conceptosDe(catKey).reduce((a,c)=>a+getMonto(catKey,c.id),0)+(mesData.custom||[]).filter(s=>s.catKey===catKey).reduce((a,s)=>a+getMontoCustom(s),0);
 }
 function fmt(n) { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
+
+function descargarCSV(filename, headers, rows) {
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const lineas = [headers.map(esc).join(';'), ...rows.map(r=>r.map(esc).join(';'))];
+  const csv = '﻿' + lineas.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function getIngresosList() {
   // Compatibilidad: meses guardados antes de este cambio tienen mesData.ingresos como número simple.
@@ -665,6 +678,20 @@ document.getElementById('btn-cats').addEventListener('click', ()=>{
   const abrir = !panel.classList.contains('open');
   panel.classList.toggle('open', abrir);
   if(abrir) renderPanelCats();
+});
+
+document.getElementById('btn-csv').addEventListener('click', ()=>{
+  const headers=['Sección','Categoría','Concepto','Presupuestado','Abonado','Estado'];
+  const rows=[];
+  getIngresosList().forEach(ing=>{
+    rows.push(['Ingresos','', ing.label, ing.monto, '', '']);
+  });
+  todosLosConceptos().forEach(c=>{
+    const pagado=montoPagadoDe(c.id);
+    const estado = pagado<=0?'Pendiente':(pagado>=c.total?'Pagado':'Parcial');
+    rows.push(['Presupuesto', c.catLabel, c.label, c.total, pagado, estado]);
+  });
+  descargarCSV(`finanzas_${claveDoc()}.csv`, headers, rows);
 });
 
 document.getElementById('btn-nueva-cat').addEventListener('click', async ()=>{

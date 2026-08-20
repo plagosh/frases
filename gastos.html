@@ -30,7 +30,7 @@ select.inp { appearance:none; cursor:pointer; }
 .btn-agregar { width:100%; background:#2d2d6e; border:none; border-radius:8px; color:#fff; font-size:0.85rem; font-weight:600; padding:0.5rem; cursor:pointer; }
 .btn-agregar:hover { background:#3d3d9e; }
 .btn-agregar:disabled { background:#2a2a2a; color:#555; cursor:not-allowed; }
-.seccion-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:0.8rem 0 0.5rem; }
+.seccion-titulo { font-size:0.7rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin:0.8rem 0 0.5rem; display:flex; align-items:center; justify-content:space-between; }
 .lista-gastos { display:flex; flex-direction:column; gap:5px; }
 .gasto-item { background:#242424; border-radius:10px; padding:0.6rem 0.9rem; display:flex; align-items:center; gap:8px; }
 .gasto-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
@@ -51,19 +51,25 @@ select.inp { appearance:none; cursor:pointer; }
 .btn-cancelar-edit:hover { background:#3a3a3a; }
 .empty-state { text-align:center; color:#444; font-size:0.82rem; padding:2rem 0; }
 .cat-summary { display:flex; flex-direction:column; gap:4px; margin-bottom:1rem; }
-.cat-row { display:flex; align-items:center; gap:8px; background:#242424; border-radius:8px; padding:0.5rem 0.8rem; }
+.cat-row { display:flex; align-items:center; gap:8px; background:#242424; border-radius:8px; padding:0.5rem 0.8rem; transition:background 0.15s,outline 0.15s; }
+.cat-row:hover { background:#2a2a2a; }
+.cat-row.activa { outline:1.5px solid #a0a0f0; }
 .cat-row-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .cat-row-name { font-size:0.78rem; color:#aaa; flex:1; }
 .cat-row-barra-track { flex:2; background:#2e2e2e; border-radius:4px; height:6px; overflow:hidden; }
 .cat-row-barra-fill { height:100%; border-radius:4px; transition:width 0.4s; }
 .cat-row-monto { font-size:0.75rem; color:#ccc; font-weight:500; min-width:70px; text-align:right; }
+.filtros { background:#242424; border-radius:12px; padding:0.7rem 0.9rem; margin-bottom:0.8rem; display:grid; grid-template-columns:2fr 1fr; gap:6px; }
+.filtros-activos { font-size:0.68rem; color:#a0a0f0; margin:-0.3rem 0 0.6rem; display:none; }
+.filtros-activos.show { display:block; }
+.filtros-activos button { background:none; border:none; color:#e07070; font-size:0.68rem; cursor:pointer; text-decoration:underline; margin-left:6px; }
 </style>
 </head>
 <body>
 
 
   <div class="header">
-    <div style="width:1px"></div>
+    <button class="btn-mes" id="btn-csv" title="Descargar CSV de los gastos filtrados">⬇ CSV</button>
     <div class="mes-nav">
       <button class="btn-mes" id="btn-prev">‹</button>
       <div class="mes-actual" id="mes-label"></div>
@@ -97,10 +103,17 @@ select.inp { appearance:none; cursor:pointer; }
     <button class="btn-agregar" id="btn-agregar">Agregar gasto</button>
   </div>
 
-  <div class="seccion-titulo">Por categoría este mes</div>
+  <div class="seccion-titulo">Por categoría este mes <span style="font-weight:400;text-transform:none;font-size:0.65rem;color:#555;">clic para filtrar</span></div>
   <div class="cat-summary" id="cat-summary"></div>
 
   <div class="seccion-titulo">Todos los gastos</div>
+  <div class="filtros">
+    <input class="inp" id="f-busca" placeholder="Buscar por descripción o nota…"/>
+    <select class="inp" id="f-cat">
+      <option value="">Todas las categorías</option>
+    </select>
+  </div>
+  <div class="filtros-activos" id="filtros-activos"></div>
   <div class="lista-gastos" id="lista-gastos"></div>
 </div>
 
@@ -133,6 +146,7 @@ function suscribirCategorias() {
   onSnapshot(q, snap => {
     categoriasLive = snap.docs.map(d=>({id:d.id, ...d.data()}));
     poblarSelectCategorias();
+    poblarFiltroCategorias();
   });
 }
 
@@ -140,6 +154,13 @@ function poblarSelectCategorias() {
   const sel = document.getElementById('g-cat');
   const actual = sel.value;
   sel.innerHTML = '<option value="">— Categoría —</option>' + categoriasLive.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+  if ([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+}
+
+function poblarFiltroCategorias() {
+  const sel = document.getElementById('f-cat');
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">Todas las categorías</option>' + categoriasLive.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
   if ([...sel.options].some(o=>o.value===actual)) sel.value = actual;
 }
 
@@ -151,11 +172,52 @@ let anio   = hoy.getFullYear();
 let gastos = [];
 let unsubscribe = null;
 let editandoId = null;
+let filtroTexto = '';
+let filtroCat = '';
 
 function mesKey() { return `${anio}-${String(mesIdx+1).padStart(2,'0')}`; }
 function mesKeyDeFecha(fechaStr) { const [y,m]=fechaStr.split('-'); return `${y}-${m}`; }
 function fmt(n)   { return '$'+Math.round(Math.abs(n)).toLocaleString('es-CL'); }
 function setSyncStatus(msg, cls='') { const el=document.getElementById('sync-status'); el.textContent=msg; el.className='sync-status '+cls; }
+
+function descargarCSV(filename, headers, rows) {
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const lineas = [headers.map(esc).join(';'), ...rows.map(r=>r.map(esc).join(';'))];
+  const csv = '﻿' + lineas.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function gastosFiltrados() {
+  return gastos.filter(g=>{
+    if (filtroCat && g.catKey!==filtroCat) return false;
+    if (filtroTexto) {
+      const texto = `${g.desc} ${g.notas||''}`.toLowerCase();
+      if (!texto.includes(filtroTexto)) return false;
+    }
+    return true;
+  });
+}
+
+function actualizarFiltrosActivos() {
+  const el = document.getElementById('filtros-activos');
+  const partes = [];
+  if (filtroCat) partes.push(`categoría: ${catInfo(filtroCat)?.label||filtroCat}`);
+  if (filtroTexto) partes.push(`texto: "${filtroTexto}"`);
+  if (!partes.length) { el.classList.remove('show'); el.innerHTML=''; return; }
+  el.innerHTML = `Filtrando por ${partes.join(' · ')} <button id="btn-limpiar-filtros">Limpiar</button>`;
+  el.classList.add('show');
+  document.getElementById('btn-limpiar-filtros').addEventListener('click', ()=>{
+    filtroCat=''; filtroTexto='';
+    document.getElementById('f-cat').value='';
+    document.getElementById('f-busca').value='';
+    renderResumen(); renderLista();
+  });
+}
 
 function renderResumen() {
   const total=gastos.reduce((a,g)=>a+g.monto,0);
@@ -169,11 +231,18 @@ function renderResumen() {
     const ejemplo=gastos.find(g=>g.catKey===key);
     const color=ejemplo.catColor||catInfo(key)?.color||'#aaa';
     const label=ejemplo.catLabel||catInfo(key)?.label||key;
-    const row=document.createElement('div'); row.className='cat-row';
+    const row=document.createElement('div'); row.className='cat-row'+(filtroCat===key?' activa':'');
     row.innerHTML=`<div class="cat-row-dot" style="background:${color}"></div><div class="cat-row-name">${label}</div><div class="cat-row-barra-track"><div class="cat-row-barra-fill" style="width:${(val/maxVal*100).toFixed(0)}%;background:${color}"></div></div><div class="cat-row-monto">${fmt(val)}</div>`;
+    row.addEventListener('click', ()=>{
+      filtroCat = (filtroCat===key) ? '' : key;
+      document.getElementById('f-cat').value = filtroCat;
+      renderResumen();
+      renderLista();
+    });
     sumCont.appendChild(row);
   });
   if(!Object.keys(porCat).length) sumCont.innerHTML='<div class="empty-state">Sin gastos este mes</div>';
+  actualizarFiltrosActivos();
 }
 
 function opcionesCategoria(selKey) {
@@ -236,7 +305,9 @@ function renderLista() {
   const lista=document.getElementById('lista-gastos');
   lista.innerHTML='';
   if(!gastos.length){ lista.innerHTML='<div class="empty-state">Sin gastos registrados este mes</div>'; return; }
-  [...gastos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(g=>{
+  const filtrados = gastosFiltrados();
+  if(!filtrados.length){ lista.innerHTML='<div class="empty-state">Sin resultados para el filtro actual</div>'; return; }
+  [...filtrados].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(g=>{
     if(g.fireId===editandoId){ lista.appendChild(renderFormEdit(g)); return; }
     const color=g.catColor||catInfo(g.catKey)?.color||'#aaa';
     const item=document.createElement('div'); item.className='gasto-item';
@@ -267,6 +338,19 @@ autenticar(app).then(() => {
 
 document.getElementById('btn-prev').addEventListener('click', ()=>{ mesIdx--; if(mesIdx<0){mesIdx=11;anio--;} document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio; suscribir(); });
 document.getElementById('btn-next').addEventListener('click', ()=>{ mesIdx++; if(mesIdx>11){mesIdx=0;anio++;} document.getElementById('mes-label').textContent=MESES[mesIdx]+' '+anio; suscribir(); });
+
+document.getElementById('f-busca').addEventListener('input', e=>{ filtroTexto = e.target.value.trim().toLowerCase(); actualizarFiltrosActivos(); renderLista(); });
+document.getElementById('f-cat').addEventListener('change', e=>{ filtroCat = e.target.value; renderResumen(); renderLista(); });
+
+document.getElementById('btn-csv').addEventListener('click', ()=>{
+  const datos = gastosFiltrados();
+  const headers=['Fecha','Descripción','Categoría','Monto','Método','Tipo','Notas'];
+  const rows=[...datos].sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(g=>[
+    g.fecha, g.desc, g.catLabel||catInfo(g.catKey)?.label||g.catKey, g.monto, g.metodo, g.tipo, g.notas||''
+  ]);
+  const sufijo = filtroCat ? `_${filtroCat}` : '';
+  descargarCSV(`gastos_${mesKey()}${sufijo}.csv`, headers, rows);
+});
 
 document.getElementById('btn-agregar').addEventListener('click', async ()=>{
   const desc=document.getElementById('g-desc').value.trim();
